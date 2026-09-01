@@ -42,10 +42,19 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
 
     # 限定 main 分支的 workflow run(push 或 workflow_dispatch 都算 ref: refs/heads/main)。
     # PR 之類的其他 ref 換不到這組憑證。
+    #
+    # ⚠️ 踩坑記錄：GitHub 的 sub claim 實際長這樣（用 CloudTrail 的 AssumeRoleWithWebIdentity
+    # 失敗紀錄查到的）：
+    #   repo:bojun1117@71881953/manga-record@1353920679:ref:refs/heads/main
+    # 不是文件裡常見範例的 repo:OWNER/REPO:ref:... 那種舊格式(帳號/repo 名稱後面多帶了
+    # @數字 id)。兩種格式都放進來，新舊都吃，不用每次 GitHub 改格式就要重新對。
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/main"]
+      values = [
+        "repo:${var.github_repo}:ref:refs/heads/main",
+        "repo:${split("/", var.github_repo)[0]}@*/${split("/", var.github_repo)[1]}@*:ref:refs/heads/main",
+      ]
     }
   }
 }
