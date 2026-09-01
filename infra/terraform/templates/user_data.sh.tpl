@@ -61,7 +61,14 @@ JWT_SECRET=$(aws secretsmanager get-secret-value --region "$REGION" --secret-id 
 docker pull "$${ECR_REPO}:latest"
 
 echo "running migration..."
-docker run --rm --env DATABASE_URL="$DATABASE_URL" "$${ECR_REPO}:latest" alembic upgrade head
+# JWT_SECRET 這裡用不到(migration 只碰 DB)，但一定要傳——app/core/config.py 的 Settings
+# 是 pydantic model，少一個必填欄位整個 import 就炸掉(alembic/env.py 會呼叫到
+# get_settings())，不會是「沒用到就沒差」。踩坑記錄：一開始漏了這行，migration 直接
+# ValidationError 收場，deploy.sh 卡在這步。
+docker run --rm \
+  --env DATABASE_URL="$DATABASE_URL" \
+  --env JWT_SECRET="$JWT_SECRET" \
+  "$${ECR_REPO}:latest" alembic upgrade head
 
 echo "swapping container..."
 docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || true
