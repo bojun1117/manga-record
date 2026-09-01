@@ -27,6 +27,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 暫時的診斷步驟，排查 OIDC assume-role 失敗用——只印長度跟頭尾幾個字元，
+      # 不印完整值（GitHub 只會遮罩「完全等於 secret 值」的字串，這種截斷後的片段不會被遮）。
+      # 查完問題就會拿掉這個 step。
+      - name: Debug secret values (temporary)
+        env:
+          ROLE: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          REGION: ${{ secrets.AWS_REGION }}
+          ECR: ${{ secrets.ECR_REPOSITORY_URL }}
+          INSTANCE: ${{ secrets.EC2_INSTANCE_ID }}
+        run: |
+          echo "AWS_GITHUB_ACTIONS_ROLE_ARN: len=${#ROLE} head='${ROLE:0:16}' tail='${ROLE: -12}'"
+          echo "AWS_REGION: len=${#REGION} value='${REGION}'"
+          echo "ECR_REPOSITORY_URL: len=${#ECR} head='${ECR:0:16}' tail='${ECR: -12}'"
+          echo "EC2_INSTANCE_ID: len=${#INSTANCE} value='${INSTANCE}'"
+
       # 用 OIDC 換臨時憑證，不用在 GitHub secrets 存長期 AWS access key。
       # AWS_GITHUB_ACTIONS_ROLE_ARN 是 terraform output 的 github_actions_role_arn。
       - name: Configure AWS credentials
