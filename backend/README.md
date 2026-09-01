@@ -211,3 +211,35 @@ curl "http://${IP}:8000/health/db"
 前端要接這個遠端後端測試的話，暫時把 `frontend/.env.development` 的
 `VITE_API_BASE_URL` 改成 `http://<backend_public_ip>:8000` 就好（後端 CORS 已經是
 `allow_origins=["*"]`,不用另外處理）。
+
+### 4. CI/CD（GitHub Actions 自動部署）
+
+上面 1、2 兩步已經自動化成 [`.github/workflows/deploy-backend.yml`](../.github/workflows/deploy-backend.yml)：
+push 到 `main` 且改到 `backend/**`，就會自動 build image → push 到 ECR → 用 SSM 觸發
+EC2 上的 `deploy.sh`（跟手動流程是同一支腳本，一樣會自動跑 migration）。也可以在
+GitHub 的 Actions 分頁手動 `workflow_dispatch` 重跑一次。
+
+換憑證用 GitHub OIDC（`infra/terraform/github_oidc.tf`），不用在 GitHub 存長期 AWS
+access key。第一次啟用要做兩件事：
+
+**a. apply 新增的 IAM 資源**
+
+```powershell
+cd manga-record\infra\terraform
+terraform apply   # 只會新增 github_oidc.tf 裡的 OIDC provider + role，不動既有資源
+terraform output -raw github_actions_role_arn
+```
+
+**b. 在 GitHub repo 設定 4 個 secrets**（Settings → Secrets and variables → Actions → New repository secret）：
+
+| Secret 名稱 | 值 |
+| --- | --- |
+| `AWS_GITHUB_ACTIONS_ROLE_ARN` | 上一步 `terraform output -raw github_actions_role_arn` 的結果 |
+| `AWS_REGION` | `terraform output -raw` 不到，對應 `variables.tf` 的 `aws_region`，預設 `us-east-1` |
+| `ECR_REPOSITORY_URL` | `terraform output -raw ecr_repository_url` |
+| `EC2_INSTANCE_ID` | `terraform output -raw ec2_instance_id` |
+
+設定好之後，之後改 `backend/` 底下的程式碼、push 到 `main`，就會自動部署，
+不用再手動做上面 1、2 步。想看部署結果去 repo 的 Actions 分頁看
+`Deploy backend to EC2` 這個 workflow 的 log（`deploy.sh` 的 stdout/stderr 會印在
+`Trigger deploy on EC2 via SSM` 這個 step 裡）。

@@ -1,7 +1,7 @@
-# Terraform — Phase 1（VPC + RDS + Secrets Manager）+ Phase 6（EC2 + ECR）
+# Terraform — Phase 1（VPC + RDS + Secrets Manager）+ Phase 6（EC2 + ECR + CI/CD）
 
 Phase 1 只建網路骨架跟資料庫。Phase 6 在同一份 state 裡加上 EC2/ECR，並把 Phase 1 那個
-暫時性的取捨收掉。
+暫時性的取捨收掉；後來又加了 GitHub OIDC role，讓 GitHub Actions 能自動部署後端。
 
 ## Phase 1 做過的暫時性取捨（Phase 6 已經收掉）
 
@@ -25,6 +25,10 @@ RDS 曾經暫時放在 **public subnet** 並開放 **你自己的 IP** 直連 54
   寫到機器上——這支腳本就是之後每次要換新版 image 時要重跑的東西
 - `security_group.tf`：新增 `aws_security_group.ec2`（對外開 `var.app_port`，預設 `8000`），
   RDS 的 security group 改成只信任這個 SG
+- `github_oidc.tf`：GitHub Actions 用的 OIDC provider + IAM role，權限鎖在「push 到
+  `ecr.tf` 這個 repo」+「對 `ec2.tf` 這台 instance 送 SSM SendCommand」兩件事，信任範圍
+  只限 `var.github_repo`（預設 `bojun1117/manga-record`）的 `main` 分支。設定步驟見
+  [`backend/README.md` 的 CI/CD 段落](../../backend/README.md#4-cicdgithub-actions-自動部署)
 
 ### 維運方式：SSM，不開 22 port
 
