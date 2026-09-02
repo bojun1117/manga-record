@@ -2,7 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from app.core.chinese import normalize_chinese
+from app.core.chinese import normalize_chinese, to_traditional
 from app.model import Manga, MangaCategory
 
 _LIKE_ESCAPE_MAP = str.maketrans({"%": "\\%", "_": "\\_", "\\": "\\\\"})
@@ -28,7 +28,7 @@ def get_or_create(db: Session, title: str, category: MangaCategory) -> Manga:
     normalized = normalize_chinese(title)
     stmt = (
         pg_insert(Manga)
-        .values(title=title, normalized_title=normalized, category=category)
+        .values(title=to_traditional(title), normalized_title=normalized, category=category)
         .on_conflict_do_update(
             index_elements=[Manga.normalized_title],
             set_={"updated_at": func.now()},
