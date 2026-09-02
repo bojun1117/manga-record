@@ -1,7 +1,5 @@
 name: Deploy backend to EC2
 
-# 只有改到 backend/** 才觸發，改前端/docs 不會誤跑一次沒必要的部署。
-# workflow_dispatch 留著，方便沒改 backend 程式碼但想手動重跑一次部署時用（例如只改了 EC2 上的設定）。
 on:
   push:
     branches: [main]
@@ -10,12 +8,10 @@ on:
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
 
-# 同時間只跑一個部署，避免兩次 push 疊在一起互相搶著換 container / 跑 migration。
 concurrency:
   group: deploy-backend
   cancel-in-progress: false
 
-# id-token: write 是 OIDC 換 AWS 憑證必要的權限（見 infra/terraform/github_oidc.tf）。
 permissions:
   id-token: write
   contents: read
@@ -27,8 +23,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 用 OIDC 換臨時憑證，不用在 GitHub secrets 存長期 AWS access key。
-      # AWS_GITHUB_ACTIONS_ROLE_ARN 是 terraform output 的 github_actions_role_arn。
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -38,9 +32,6 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 跟 backend/README.md 手動流程用同一組指令，只是自動化——
-      # 沿用專案「個人專案用 :latest 覆蓋式部署」的取捨（見 infra/terraform/ecr.tf 註解），
-      # 不額外打 commit sha tag。
       - name: Build and push image
         working-directory: backend
         env:
@@ -49,9 +40,6 @@ jobs:
           docker build -t "$ECR_REPO:latest" .
           docker push "$ECR_REPO:latest"
 
-      # EC2 上的 /opt/manga-record/deploy.sh（user_data.sh.tpl 開機時寫好的）已經知道怎麼
-      # 登入 ECR、跑 migration、換 container，這裡只是用 SSM SendCommand 觸發它跑一次，
-      # 不用開 22 port、不用管理 SSH key，跟平常手動維運走同一條路徑(見 infra/terraform/iam.tf)。
       - name: Trigger deploy on EC2 via SSM
         env:
           INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
@@ -66,8 +54,6 @@ jobs:
             --query "Command.CommandId" --output text)
           echo "SSM command id: $COMMAND_ID"
 
-          # deploy.sh 會跑 migration + 換 container，給足時間，等它跑完(成功或失敗都會結束)。
-          # 這個 waiter 在 command 失敗時本身會回傳非 0，用 || true 接住，讓下面能印出 log 再判斷。
           aws ssm wait command-executed \
             --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" || true
 

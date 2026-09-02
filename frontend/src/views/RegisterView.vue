@@ -13,7 +13,6 @@ const confirmPassword = ref('')
 const submitting = ref(false)
 const errorMsg = ref<string | null>(null)
 
-// 跟後端 API.md §11 對齊的前端驗證,提早給錯誤訊息,不用等打了 API 才知道格式錯
 const USERNAME_PATTERN = /^[a-zA-Z0-9_]+$/
 
 const usernameError = computed(() => {

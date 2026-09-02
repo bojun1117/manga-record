@@ -9,14 +9,11 @@ const emit = defineEmits<{
   update: [rating: number | null]
 }>()
 
-// 沒評分狀態下,點「點此評分」後展開星星輸入
 const expanded = ref(false)
-// hover 預覽
 const hoverValue = ref<number | null>(null)
 
 function pick(n: number) {
   if (props.rating === n) {
-    // 點同一顆 → 清除
     emit('update', null)
   } else {
     emit('update', n)
@@ -37,7 +34,6 @@ function shouldFill(n: number): boolean {
 </script>
 
 <template>
-  <!-- 已評分:5 顆星可改可清除 -->
   <div
     v-if="rating !== null"
     class="flex items-center gap-0.5 text-lg tracking-[2px]"
@@ -57,7 +53,6 @@ function shouldFill(n: number): boolean {
     </button>
   </div>
 
-  <!-- 未評分,展開:5 顆空星可選 -->
   <div
     v-else-if="expanded"
     class="flex items-center gap-0.5 text-lg tracking-[2px]"
@@ -77,7 +72,6 @@ function shouldFill(n: number): boolean {
     </button>
   </div>
 
-  <!-- 未評分,未展開:「點此評分」連結 -->
   <button
     v-else
     type="button"

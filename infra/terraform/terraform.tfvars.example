@@ -1,7 +1,0 @@
-# 複製這個檔案成 terraform.tfvars（.gitignore 已排除，不會被 commit）。
-# 所有變數都有預設值（含 my_ip_cidr = null），不填也可以直接 apply。
-
-# my_ip_cidr 平常留空(註解掉)——RDS 只信任 EC2 security group,不對外開放。
-# 只有需要臨時用 psql 直連 RDS 除錯時才取消註解、填上目前的 IP:
-# 查詢方式：終端機跑 `curl -s https://checkip.amazonaws.com`，拿到的 IP 後面加上 /32
-# my_ip_cidr = "1.2.3.4/32"

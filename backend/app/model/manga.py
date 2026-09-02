@@ -8,8 +8,6 @@ from app.model.base import Base
 
 
 class MangaCategory(str, enum.Enum):
-    """DATA_MODEL.md 的九個分類。"""
-
     HOT_BLOODED = "hot_blooded"
     MYSTERY = "mystery"
     ADVENTURE = "adventure"
@@ -22,12 +20,6 @@ class MangaCategory(str, enum.Enum):
 
 
 class Manga(Base):
-    """DATA_MODEL.md `manga`。全站共用目錄，沒有 member_id。
-
-    normalized_title 是 UNIQUE：POST /collections 的 get-or-create 靠這個欄位判斷
-    「這部漫畫是不是已經有人建過了」，見 API.md §9。
-    """
-
     __tablename__ = "manga"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)

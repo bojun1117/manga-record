@@ -1,17 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ReadingStatus } from '@/types/manga'
+import { STATUS_LABELS } from '@/constants/manga'
 
 const props = defineProps<{
   status: ReadingStatus
 }>()
-
-const STATUS_LABEL: Record<ReadingStatus, string> = {
-  plan_to_read: '待看',
-  reading: '追讀中',
-  dropped: '棄坑',
-  completed: '已追完',
-}
 
 const STATUS_CLASS: Record<ReadingStatus, string> = {
   plan_to_read: 'bg-neutral-100 text-neutral-600',
@@ -20,7 +14,7 @@ const STATUS_CLASS: Record<ReadingStatus, string> = {
   completed: 'bg-green-50 text-green-700',
 }
 
-const label = computed(() => STATUS_LABEL[props.status])
+const label = computed(() => STATUS_LABELS[props.status])
 const klass = computed(() => STATUS_CLASS[props.status])
 </script>
 

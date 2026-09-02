@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
 import type { ReadingStatus } from '@/types/manga'
+import { STATUS_OPTIONS } from '@/constants/manga'
 
 defineProps<{
   currentStatus: ReadingStatus
@@ -14,13 +15,6 @@ const emit = defineEmits<{
 const open = ref(false)
 const submenuOpen = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
-
-const STATUS_OPTIONS: ReadonlyArray<{ value: ReadingStatus; label: string }> = [
-  { value: 'plan_to_read', label: '待看' },
-  { value: 'reading', label: '追讀中' },
-  { value: 'dropped', label: '棄坑' },
-  { value: 'completed', label: '已追完' },
-]
 
 function toggle(e: MouseEvent) {
   e.stopPropagation()
@@ -80,7 +74,6 @@ onUnmounted(() => {
       v-if="open"
       class="absolute right-0 top-7 z-20 w-36 rounded-md border border-neutral-200 bg-white py-1 shadow-lg"
     >
-      <!-- 切換狀態(展開子選單) -->
       <button
         type="button"
         class="flex w-full items-center justify-between px-3 py-1.5 text-left text-[13px] text-neutral-700 hover:bg-neutral-50"
@@ -107,7 +100,6 @@ onUnmounted(() => {
 
       <div class="my-1 border-t border-neutral-100"></div>
 
-      <!-- 刪除 -->
       <button
         type="button"
         class="block w-full px-3 py-1.5 text-left text-[13px] text-red-600 hover:bg-red-50"

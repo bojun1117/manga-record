@@ -94,3 +94,9 @@ variable "app_port" {
   type        = number
   default     = 8000
 }
+
+variable "github_repo" {
+  description = "GitHub repo，格式 owner/repo；只有這個 repo 的 main 分支能透過 OIDC 換到 CI/CD role 的憑證"
+  type        = string
+  default     = "bojun1117/manga-record"
+}

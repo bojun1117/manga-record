@@ -1,24 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { MangaCategory } from '@/types/manga'
+import { CATEGORY_LABELS } from '@/constants/manga'
 
 const props = defineProps<{
   category: MangaCategory
 }>()
 
-const CATEGORY_LABEL: Record<MangaCategory, string> = {
-  hot_blooded: '熱血',
-  mystery: '懸疑',
-  adventure: '冒險',
-  romance: '愛情',
-  casual: '輕鬆',
-  competition: '競技',
-  revenge: '復仇',
-  slice_of_life: '生活',
-  other: '其他',
-}
-
-// 用比 StatusBadge 更柔和的色階,避免兩個 badge 互搶
 const CATEGORY_CLASS: Record<MangaCategory, string> = {
   hot_blooded: 'bg-orange-50 text-orange-700',
   mystery: 'bg-violet-50 text-violet-700',
@@ -31,7 +19,7 @@ const CATEGORY_CLASS: Record<MangaCategory, string> = {
   other: 'bg-neutral-100 text-neutral-600',
 }
 
-const label = computed(() => CATEGORY_LABEL[props.category])
+const label = computed(() => CATEGORY_LABELS[props.category])
 const klass = computed(() => CATEGORY_CLASS[props.category])
 </script>
 

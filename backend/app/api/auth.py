@@ -34,7 +34,6 @@ def me(
     member_id: int = Depends(require_auth),
     db: Session = Depends(get_db),
 ) -> MemberResponse:
-    """不是 API.md 裡列的正式 endpoint，純粹拿來驗收 require_auth 有沒有正常運作。"""
     member = member_repository.get_by_id(db, member_id)
     if member is None:
         raise NotFoundError("member not found")

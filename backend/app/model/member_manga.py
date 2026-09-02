@@ -17,8 +17,6 @@ from app.model.base import Base
 
 
 class ReadingStatus(str, enum.Enum):
-    """DATA_MODEL.md 的四個追讀狀態。"""
-
     PLAN_TO_READ = "plan_to_read"
     READING = "reading"
     DROPPED = "dropped"
@@ -26,11 +24,6 @@ class ReadingStatus(str, enum.Enum):
 
 
 class MemberManga(Base):
-    """DATA_MODEL.md `member_manga`。表名用標準關聯表命名法，API 路徑仍叫 /collections。
-
-    rating 不綁定 status（跟舊系統 comic-vibe 不同的簡化決策，見 API.md 驗證規則）。
-    """
-
     __tablename__ = "member_manga"
     __table_args__ = (
         UniqueConstraint("member_id", "manga_id", name="uq_member_manga_member_id_manga_id"),

@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from app.core.chinese import normalize_chinese
 from app.model import Manga, MangaCategory
 
-# ILIKE 的萬用字元 %/_ 如果查詢字串裡本身就有這些字元，要跳脫掉，不然會被當成 pattern 解釋
 _LIKE_ESCAPE_MAP = str.maketrans({"%": "\\%", "_": "\\_", "\\": "\\\\"})
 
 
@@ -26,11 +25,6 @@ def search_by_title(db: Session, query: str, limit: int = 20) -> list[Manga]:
 
 
 def get_or_create(db: Session, title: str, category: MangaCategory) -> Manga:
-    """API.md §9 的 get-or-create：INSERT ... ON CONFLICT (normalized_title)。
-
-    不在這裡 commit——交易邊界由呼叫端（collection_service.create_collection）控制，
-    確保「manga 建立」跟「member_manga 建立」要嘛一起成功、要嘛一起 rollback。
-    """
     normalized = normalize_chinese(title)
     stmt = (
         pg_insert(Manga)
@@ -44,5 +38,5 @@ def get_or_create(db: Session, title: str, category: MangaCategory) -> Manga:
     manga_id = db.execute(stmt).scalar_one()
     db.flush()
     manga = db.get(Manga, manga_id)
-    assert manga is not None  # 剛 insert/upsert 完，這筆一定存在
+    assert manga is not None
     return manga

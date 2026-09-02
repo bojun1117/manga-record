@@ -65,8 +65,6 @@ def update_collection(
     member_id: int = Depends(require_auth),
     db: Session = Depends(get_db),
 ) -> CollectionItemResponse:
-    # exclude_unset=True 是 partial update 的關鍵：只有 request body 裡真的出現的欄位才會進這個 dict
-    # （API.md §1.3：null 代表明確清空、key 不存在代表不要動）
     fields = payload.model_dump(exclude_unset=True)
     entry, manga = collection_service.update_collection(db, member_id, collection_id, fields)
     return _to_response(entry, manga)

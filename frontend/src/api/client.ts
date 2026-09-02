@@ -1,8 +1,3 @@
-// 通用 API client。集中處理 base URL、JWT header、JSON、錯誤格式。
-// API.md §1.4 的錯誤格式:{ error: { code, message, details } }
-
-// 空字串是合法值：代表同源（dev 走 vite proxy，prod 走反向代理），不是漏設定。
-// 只有整個 key 沒定義（undefined）才是真的忘記設。
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 if (import.meta.env.VITE_API_BASE_URL === undefined) {

@@ -1,10 +1,3 @@
-# VPC + 2 public subnet + 2 private subnet（跨 2 個 AZ）。
-#
-# Public subnet：放 EC2(見 ec2.tf)。Phase 1-5 這裡也暫時放過 RDS,方便本機直連驗收,
-#   Phase 6 起 RDS 已經搬進 private subnet(見 rds.tf)。
-# Private subnet：放 RDS。沒有路由到 IGW（不掛 NAT Gateway，省錢）——
-#   RDS 本身不需要主動連外網，只需要被同 VPC 裡的 EC2 連進來就好。
-
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -65,8 +58,6 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# Private route table 故意不加任何 route（沒有 IGW、沒有 NAT）。
-# 純粹隔離用，這階段還沒有資源真的放在這裡。
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
@@ -79,4 +70,78 @@ resource "aws_route_table_association" "private" {
   count          = length(aws_subnet.private)
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private.id
+}
+
+resource "aws_security_group" "ec2" {
+  name        = "${var.project_name}-${var.environment}-ec2-sg"
+  description = "Allow public access to the backend API"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "Backend API"
+    from_port   = var.app_port
+    to_port     = var.app_port
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-ec2-sg"
+  }
+}
+
+resource "aws_security_group" "rds" {
+  name        = "${var.project_name}-${var.environment}-rds-sg"
+  description = "Allow Postgres access to RDS"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "Backend EC2"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ec2.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-rds-sg"
+  }
+}
+
+resource "aws_security_group_rule" "rds_debug" {
+  count = var.my_ip_cidr != null ? 1 : 0
+
+  description       = "TEMPORARY debug access from developer IP"
+  type              = "ingress"
+  from_port         = 5432
+  to_port           = 5432
+  protocol          = "tcp"
+  cidr_blocks       = [var.my_ip_cidr]
+  security_group_id = aws_security_group.rds.id
+}
+
+resource "aws_security_group_rule" "ec2_ssh_debug" {
+  count = var.my_ip_cidr != null ? 1 : 0
+
+  description       = "TEMPORARY SSH debug access from developer IP"
+  type              = "ingress"
+  from_port         = 22
+  to_port           = 22
+  protocol          = "tcp"
+  cidr_blocks       = [var.my_ip_cidr]
+  security_group_id = aws_security_group.ec2.id
 }

@@ -1,7 +1,3 @@
-# 統一的應用層錯誤型別，對應 API.md §1.4 / §12 的錯誤格式。
-# service 層丟這些例外，main.py 的 exception handler 統一轉成
-# {"error": {"code", "message", "details"}} 格式，狀態碼由 status_code 決定。
-
 from typing import Any
 
 
@@ -41,7 +37,5 @@ class UsernameTakenError(AppError):
 
 
 class AlreadyInCollectionError(AppError):
-    """Phase 4 會用到（POST /collections 撞 UNIQUE(member_id, manga_id)），先定義在這裡。"""
-
     status_code = 409
     code = "ALREADY_IN_COLLECTION"

@@ -1,15 +1,3 @@
-/**
- * 把 ISO 時間戳格式化成相對時間,中文 zh-TW。
- *
- * 規則(由近到遠):
- * - < 1 分鐘  : 「剛剛」
- * - < 1 小時  : 「N 分鐘前」
- * - < 24 小時 : 「N 小時前」
- * - < 2 天    : 「昨天」
- * - < 30 天   : 「N 天前」
- * - < 12 個月 : 「N 個月前」
- * - 其他      : 「YYYY 年」
- */
 export function formatRelativeTime(iso: string, now: Date = new Date()): string {
   const then = new Date(iso)
   const diffMs = now.getTime() - then.getTime()

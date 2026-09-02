@@ -7,8 +7,6 @@ from app.model.base import Base
 
 
 class Member(Base):
-    """DATA_MODEL.md `member`。密碼一律存 bcrypt 雜湊，password_hash 永遠不是明文。"""
-
     __tablename__ = "member"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)

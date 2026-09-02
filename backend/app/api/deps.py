@@ -1,5 +1,3 @@
-# FastAPI dependency：受保護的 route 用 Depends(require_auth) 取得目前登入者的 member id。
-
 from typing import Annotated
 
 from fastapi import Depends, Header
@@ -18,7 +16,6 @@ def _extract_bearer_token(authorization: Annotated[str | None, Header()] = None)
 
 
 def require_auth(token: Annotated[str, Depends(_extract_bearer_token)]) -> int:
-    """回傳目前登入者的 member id。token 缺失/格式錯/過期/簽章錯/payload 不是合法整數，一律轉成 401。"""
     try:
         sub = decode_access_token(token)
         return int(sub)

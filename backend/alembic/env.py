@@ -4,13 +4,12 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
-from app.model import Base  # noqa: F401  匯入才會把所有 model 註冊進 Base.metadata
+from app.model import Base  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# DB URL 跟 FastAPI app 共用同一份 .env 設定，不在 alembic.ini 裡另外存一份。
 config.set_main_option("sqlalchemy.url", get_settings().database_url)
 
 target_metadata = Base.metadata

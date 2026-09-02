@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref } from 'vue'
+import { parseNonNegativeInt } from '@/utils/number'
 
 const props = defineProps<{
   value: number | null
@@ -12,9 +13,7 @@ const emit = defineEmits<{
 
 const editing = ref(false)
 const inputRef = ref<HTMLInputElement | null>(null)
-// v-model 在 type="number" input 上會自動把字串 cast 成 number,所以 draft 可能是 string('') 或 number。
 const draft = ref<string | number>('')
-// 樂觀更新:UI 立刻反映,失敗時靠這個還原
 const optimisticValue = ref<number | null>(null)
 const useOptimistic = ref(false)
 
@@ -38,18 +37,10 @@ function cancel() {
 async function commit() {
   if (!editing.value) return
 
-  const trimmed = String(draft.value ?? '').trim()
-  let next: number | null
-
-  if (trimmed === '') {
-    next = null
-  } else {
-    const n = Number(trimmed)
-    if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
-      cancel()
-      return
-    }
-    next = n
+  const next = parseNonNegativeInt(draft.value)
+  if (next === undefined) {
+    cancel()
+    return
   }
 
   if (next === props.value) {

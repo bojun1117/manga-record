@@ -16,7 +16,6 @@ def register(db: Session, username: str, password: str) -> Member:
     try:
         db.commit()
     except IntegrityError as exc:
-        # race condition：兩個 request 同時搶同一個 username，先查沒撞到、寫入時才撞 UNIQUE
         db.rollback()
         raise UsernameTakenError(f"username '{username}' is already taken") from exc
     db.refresh(member)
@@ -25,7 +24,6 @@ def register(db: Session, username: str, password: str) -> Member:
 
 def login(db: Session, username: str, password: str) -> str:
     member = member_repository.get_by_username(db, username)
-    # 帳號不存在或密碼錯誤回同一個錯誤，避免帳號列舉，見 AUTH.md
     if member is None or not verify_password(password, member.password_hash):
         raise UnauthorizedError("invalid username or password")
     return create_access_token(str(member.id))

@@ -5,6 +5,5 @@
 terraform.tfvars
 crash.log
 
-# SSM/EC2 Instance Connect 在這個環境連不上(踩坑記錄見 ec2.tf),改用傳統 SSH key pair 除錯用。
 ec2-ssh-key
 ec2-ssh-key.pub

@@ -1,7 +1,6 @@
 import type { CollectionItem, MangaCategory, ReadingStatus } from '@/types/manga'
 import { apiRequest } from './client'
 
-// API.md §9:沒有 mangaId 欄位,一律靠 mangaName 由後端 get-or-create。
 export interface CreateCollectionInput {
   mangaName: string
   category?: MangaCategory
@@ -11,8 +10,6 @@ export interface CreateCollectionInput {
   rating: number | null
 }
 
-// PATCH 是 partial update:物件裡沒出現的 key 不會被送出(JSON.stringify 會自動略過 undefined 的欄位),
-// 對應 API.md §1.3「key 不存在 = 不要動、null = 明確清空」的語意。
 export interface UpdateCollectionInput {
   status?: ReadingStatus
   currentVolume?: number | null

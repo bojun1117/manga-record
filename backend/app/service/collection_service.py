@@ -23,9 +23,6 @@ def create_collection(
     current_chapter: int | None,
     rating: int | None,
 ) -> tuple[MemberManga, Manga]:
-    """API.md §9：get-or-create manga + 建立 member_manga，整段是同一個交易
-    （db.commit() 之前任何一步失敗都會透過 rollback 一起復原，見 API.md §9 的說明）。
-    """
     manga = manga_repository.get_or_create(db, manga_name, category or MangaCategory.OTHER)
 
     entry = MemberManga(
@@ -40,8 +37,6 @@ def create_collection(
     try:
         db.commit()
     except IntegrityError as exc:
-        # 撞到 UNIQUE(member_id, manga_id)：這個人已經收藏過這部漫畫
-        # （可能是使用者真的重複操作，也可能是 API.md §9 講的前端重試情境）
         db.rollback()
         raise AlreadyInCollectionError("this manga is already in your collection") from exc
 

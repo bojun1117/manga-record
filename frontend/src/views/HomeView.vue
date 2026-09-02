@@ -9,6 +9,7 @@ import MangaCard from '@/components/MangaCard.vue'
 import AddMangaModal from '@/components/AddMangaModal.vue'
 import AppToast from '@/components/AppToast.vue'
 import { normalizeChinese } from '@/utils/chinese'
+import { STATUS_OPTIONS, CATEGORY_OPTIONS } from '@/constants/manga'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -24,25 +25,14 @@ const activeStatus = ref<StatusFilter>('all')
 const activeCategory = ref<CategoryFilter>('all')
 const searchQuery = ref('')
 
-// 待看獨立成下方區塊(見 planToReadCollections),這裡不重複列
 const STATUS_FILTERS: ReadonlyArray<{ value: StatusFilter; label: string }> = [
   { value: 'all', label: '全部' },
-  { value: 'reading', label: '追讀中' },
-  { value: 'dropped', label: '棄坑' },
-  { value: 'completed', label: '已追完' },
+  ...STATUS_OPTIONS.filter((o) => o.value !== 'plan_to_read'),
 ]
 
 const CATEGORY_FILTERS: ReadonlyArray<{ value: CategoryFilter; label: string }> = [
   { value: 'all', label: '全部' },
-  { value: 'hot_blooded', label: '熱血' },
-  { value: 'mystery', label: '懸疑' },
-  { value: 'adventure', label: '冒險' },
-  { value: 'romance', label: '愛情' },
-  { value: 'casual', label: '輕鬆' },
-  { value: 'competition', label: '競技' },
-  { value: 'revenge', label: '復仇' },
-  { value: 'slice_of_life', label: '生活' },
-  { value: 'other', label: '其他' },
+  ...CATEGORY_OPTIONS,
 ]
 
 const sortedCollections = computed(() =>
@@ -51,7 +41,6 @@ const sortedCollections = computed(() =>
   ),
 )
 
-// 搜尋字串走繁簡正規化(轉簡體+小寫),讓「進擊」「进击」共通
 const normalizedQuery = computed(() => normalizeChinese(searchQuery.value.trim()))
 
 function categoryOk(c: { category: MangaCategory }) {
@@ -64,7 +53,6 @@ function queryOk(c: { title: string }) {
   )
 }
 
-// 主清單不含待看,待看獨立顯示在下方(見 planToReadCollections)
 const visibleCollections = computed(() =>
   sortedCollections.value.filter((c) => {
     const statusOk =
@@ -91,7 +79,6 @@ onMounted(async () => {
     try {
       await store.getAll()
     } catch {
-      // ApiException 已被 store 接住記錄,401 會自動 logout → 路由守衛踢回 login
       if (!auth.isAuthenticated) {
         router.replace({ name: 'login' })
       }
@@ -134,7 +121,6 @@ function logout() {
       </div>
     </div>
 
-    <!-- 搜尋 -->
     <div class="mb-3">
       <label class="relative block">
         <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
@@ -159,7 +145,6 @@ function logout() {
       </label>
     </div>
 
-    <!-- 狀態篩選 -->
     <div class="mb-2 flex flex-wrap items-center gap-2">
       <span class="text-[12px] text-neutral-400">狀態</span>
       <button
@@ -178,7 +163,6 @@ function logout() {
       </button>
     </div>
 
-    <!-- 分類篩選 -->
     <div class="mb-4 flex flex-wrap items-center gap-2">
       <span class="text-[12px] text-neutral-400">分類</span>
       <button
@@ -197,7 +181,6 @@ function logout() {
       </button>
     </div>
 
-    <!-- loading skeleton -->
     <div
       v-if="loading && !loaded"
       class="grid gap-3"
@@ -231,7 +214,6 @@ function logout() {
         <p v-else class="text-sm text-neutral-500">這個篩選條件下沒有漫畫。</p>
       </div>
 
-      <!-- 待看:獨立區塊,不放進上面的狀態篩選/主清單,避免同一部漫畫出現兩次 -->
       <section v-if="stats.planToRead > 0" class="mt-8 border-t border-neutral-200 pt-5">
         <h2 class="mb-3 text-lg font-semibold text-neutral-800">
           待看清單

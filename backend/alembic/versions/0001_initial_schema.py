@@ -1,13 +1,3 @@
-"""initial schema: member, manga, member_manga
-
-Revision ID: 0001
-Revises:
-Create Date: 2026-09-01
-
-手寫（不是 autogenerate），直接對應 DATA_MODEL.md 的三張表定義。
-所有 id 都是 bigserial（auto increment），不是 UUID。
-"""
-
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -31,7 +21,7 @@ manga_category = postgresql.ENUM(
     "slice_of_life",
     "other",
     name="manga_category",
-    create_type=False,  # 型別建立完全手動控制（見下方 upgrade()），避免 create_table 又自動建一次撞重複
+    create_type=False,
 )
 
 reading_status = postgresql.ENUM(

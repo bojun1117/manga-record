@@ -16,7 +16,6 @@ export const useCollectionStore = defineStore('collection', () => {
   const collections = ref<CollectionItem[]>([])
   const loading = ref(false)
   const loaded = ref(false)
-  // 最近一次 API 呼叫的錯誤(給 toast 用)
   const lastError = ref<string | null>(null)
 
   function getToken(): string {
@@ -29,7 +28,6 @@ export const useCollectionStore = defineStore('collection', () => {
   function recordError(err: unknown): void {
     if (err instanceof ApiException) {
       lastError.value = err.message
-      // 401 → token 失效 / 過期,自動登出讓使用者重來
       if (err.isUnauthorized) {
         const auth = useAuthStore()
         auth.logout()
@@ -79,12 +77,10 @@ export const useCollectionStore = defineStore('collection', () => {
       throw e
     }
 
-    // 樂觀更新:先在本地套用 patch,UI 立刻反應
     const original = collections.value[idx]!
     const optimistic: CollectionItem = {
       ...original,
       ...patch,
-      // 不亂動 server-managed 欄位
       id: original.id,
       mangaId: original.mangaId,
       title: original.title,
@@ -95,11 +91,9 @@ export const useCollectionStore = defineStore('collection', () => {
 
     try {
       const updated = await updateCollectionApi(id, patch, getToken())
-      // 用後端回的權威值取代(包括 lastReadAt / updatedAt)
       collections.value[idx] = updated
       return { ...updated }
     } catch (err) {
-      // rollback:還原原本的值
       collections.value[idx] = original
       recordError(err)
       throw err
@@ -114,14 +108,12 @@ export const useCollectionStore = defineStore('collection', () => {
       throw e
     }
 
-    // 樂觀刪除
     const removed = collections.value[idx]!
     collections.value.splice(idx, 1)
 
     try {
       await deleteCollectionApi(id, getToken())
     } catch (err) {
-      // rollback:把刪掉的塞回原位
       collections.value.splice(idx, 0, removed)
       recordError(err)
       throw err

@@ -1,18 +1,14 @@
 name: Deploy frontend to GitHub Pages
 
-# 觸發:push 到 main 分支
-# 也可以手動觸發(workflow_dispatch)
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-# 同一個 branch 同時只跑一個部署,後面的會等前面跑完
 concurrency:
   group: 'pages'
   cancel-in-progress: false
 
-# 給 GITHUB_TOKEN 發布到 GitHub Pages 的權限
 permissions:
   contents: read
   pages: write
@@ -43,9 +39,7 @@ jobs:
       - name: Build
         working-directory: frontend
         env:
-          # base 需與 GitHub Pages 子路徑一致
           VITE_BASE_PATH: /manga-record/
-          # API base URL 用 .env.production 裡的值,這裡不覆蓋
         run: npm run build
 
       - name: Setup Pages

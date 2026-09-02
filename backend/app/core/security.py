@@ -1,5 +1,3 @@
-# bcrypt 雜湊 / JWT 簽發驗證。AUTH.md 有完整流程說明。
-
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -9,9 +7,6 @@ from app.core.config import get_settings
 
 JWT_ALGORITHM = "HS256"
 
-# bcrypt 對輸入長度有 72 bytes 的硬限制，超過會直接丟例外（不同版本行為可能是截斷或報錯，
-# 不要依賴任何一種，從輸入端就擋掉）。app/schema/auth.py 的 password 欄位已經設 max_length=72，
-# 這裡再檢查一次防呆，不要只信任呼叫端有驗證過。
 _BCRYPT_MAX_BYTES = 72
 
 
@@ -28,7 +23,6 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def create_access_token(subject: str) -> str:
-    """subject 是 member.id 的字串形式（JWT sub claim 規定要是字串）。"""
     settings = get_settings()
     now = datetime.now(timezone.utc)
     payload = {
@@ -40,7 +34,6 @@ def create_access_token(subject: str) -> str:
 
 
 def decode_access_token(token: str) -> str:
-    """回傳 payload 的 sub。token 無效/過期時 pyjwt 會丟例外，呼叫端（app/api/deps.py）接住轉成 401。"""
     settings = get_settings()
     payload = jwt.decode(token, settings.jwt_secret, algorithms=[JWT_ALGORITHM])
     return payload["sub"]

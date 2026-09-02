@@ -85,8 +85,8 @@ UNIQUE (member_id, manga_id)   -- 同一人對同一部漫畫只能有一筆收�
 
 ### 重要規則
 
-- `current_volume` 與 `current_chapter` 各自獨立，可以只填一個、兩個都填、或兩個都空（沿用舊系統規則）
-- `rating` **不綁定 status**：任何狀態都可以評分，也可以清空（與舊系統不同的簡化決策）
+- `current_volume` 與 `current_chapter` 各自獨立，可以只填一個、兩個都填、或兩個都空
+- `rating` **不綁定 status**：任何狀態都可以評分，也可以清空
 - `last_read_at` 在 `current_volume` 或 `current_chapter` 被更新時自動刷新為當下時間，用來排序「最近在追的」
 - `(member_id, manga_id)` 唯一：同一人不能對同一部漫畫建立兩筆收藏（重複新增時 API 回 409，見 `API.md`）
 - 刪除 `member_manga` 記錄**不會**連動刪除 `manga`（其他使用者可能還收藏著同一部作品）

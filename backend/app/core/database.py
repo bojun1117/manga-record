@@ -1,5 +1,3 @@
-# SQLAlchemy engine + session。FastAPI route 用 Depends(get_db) 拿一個 request 生命週期的 session。
-
 from collections.abc import Generator
 
 from sqlalchemy import create_engine

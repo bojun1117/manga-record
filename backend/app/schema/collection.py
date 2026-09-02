@@ -1,5 +1,3 @@
-# API.md §3.1 / §9 / §10
-
 from datetime import datetime
 
 from pydantic import Field, field_validator
@@ -9,10 +7,8 @@ from app.schema.base import CamelModel
 
 
 class CreateCollectionRequest(CamelModel):
-    """POST /collections。沒有 mangaId 欄位——一律靠 mangaName 由後端 get-or-create，見 API.md §9。"""
-
     manga_name: str = Field(min_length=1, max_length=200)
-    category: MangaCategory | None = None  # 只有「真的新建 manga」時才會被採用
+    category: MangaCategory | None = None
     status: ReadingStatus = ReadingStatus.PLAN_TO_READ
     current_volume: int | None = Field(default=None, ge=0, le=9999)
     current_chapter: int | None = Field(default=None, ge=0, le=9999)
@@ -28,10 +24,6 @@ class CreateCollectionRequest(CamelModel):
 
 
 class UpdateCollectionRequest(CamelModel):
-    """PATCH /collections/{id}。所有欄位都選填，只有 request body 裡真的出現的 key 才會被更新
-    （partial update 語意，靠 exclude_unset=True 判斷，見 API.md §1.3）。
-    """
-
     status: ReadingStatus | None = None
     current_volume: int | None = Field(default=None, ge=0, le=9999)
     current_chapter: int | None = Field(default=None, ge=0, le=9999)

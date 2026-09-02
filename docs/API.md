@@ -1,6 +1,6 @@
 # API.md — Manga Record Backend Contract
 
-FastAPI 版本的 REST API 規格，取代舊系統 `comic-vibe` 的 API。詳細資料模型定義見 `DATA_MODEL.md`。
+REST API 規格。詳細資料模型定義見 `DATA_MODEL.md`。
 
 ---
 
@@ -58,12 +58,6 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
   }
 }
 ```
-
-### 1.5 CORS
-
-開發階段 `*`；EC2 有固定網址後收緊到正式 domain。
-
----
 
 ## 2. 約定的請求行為
 

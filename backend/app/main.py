@@ -14,8 +14,6 @@ from app.core.errors import AppError
 
 app = FastAPI(title="Manga Record API")
 
-# API.md §1.5：開發階段 `*`；EC2 有固定網址後收緊到正式 domain。
-# allow_credentials 保持預設 False——auth 用 Authorization: Bearer header（見 AUTH.md），不靠 cookie。
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,7 +28,6 @@ app.include_router(collections_router)
 
 @app.exception_handler(AppError)
 def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
-    """統一轉成 API.md §1.4 的錯誤格式。"""
     return JSONResponse(
         status_code=exc.status_code,
         content={"error": {"code": exc.code, "message": exc.message, "details": exc.details}},
@@ -39,7 +36,6 @@ def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
 
 @app.exception_handler(RequestValidationError)
 def handle_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
-    """Pydantic 的 request body 驗證失敗，FastAPI 預設回 422，這裡改成 API.md 規定的 400 VALIDATION_ERROR。"""
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
@@ -59,6 +55,5 @@ def health() -> dict[str, str]:
 
 @app.get("/health/db")
 def health_db(db: Session = Depends(get_db)) -> dict[str, str]:
-    """驗收用：確認 FastAPI 真的能透過 SQLAlchemy 連上 RDS。"""
     db.execute(text("SELECT 1"))
     return {"status": "ok"}
