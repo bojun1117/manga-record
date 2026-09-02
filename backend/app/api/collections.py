@@ -1,17 +1,21 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_auth
 from app.core.database import get_db
-from app.model import Manga, MemberManga
+from app.model import Manga, MangaCategory, MemberManga, ReadingStatus
 from app.schema.collection import (
     CollectionItemResponse,
+    CollectionListResponse,
+    CollectionStatsResponse,
     CreateCollectionRequest,
     UpdateCollectionRequest,
 )
 from app.service import collection_service
 
 router = APIRouter(prefix="/collections", tags=["collections"])
+
+PAGE_SIZE = 30
 
 
 def _to_response(entry: MemberManga, manga: Manga) -> CollectionItemResponse:
@@ -30,13 +34,32 @@ def _to_response(entry: MemberManga, manga: Manga) -> CollectionItemResponse:
     )
 
 
-@router.get("", response_model=list[CollectionItemResponse])
+@router.get("", response_model=CollectionListResponse)
 def list_collections(
+    status: list[ReadingStatus] | None = Query(default=None),
+    category: MangaCategory | None = Query(default=None),
+    q: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
     member_id: int = Depends(require_auth),
     db: Session = Depends(get_db),
-) -> list[CollectionItemResponse]:
-    rows = collection_service.list_collections(db, member_id)
-    return [_to_response(entry, manga) for entry, manga in rows]
+) -> CollectionListResponse:
+    rows, total = collection_service.list_collections_page(
+        db, member_id, status, category, q, page, PAGE_SIZE
+    )
+    return CollectionListResponse(
+        items=[_to_response(entry, manga) for entry, manga in rows],
+        page=page,
+        page_size=PAGE_SIZE,
+        total=total,
+    )
+
+
+@router.get("/stats", response_model=CollectionStatsResponse)
+def collections_stats(
+    member_id: int = Depends(require_auth),
+    db: Session = Depends(get_db),
+) -> CollectionStatsResponse:
+    return CollectionStatsResponse(**collection_service.get_collection_stats(db, member_id))
 
 
 @router.post("", response_model=CollectionItemResponse, status_code=status.HTTP_201_CREATED)

@@ -3,10 +3,32 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin, require_auth
 from app.core.database import get_db
-from app.schema.manga import MangaAdminResponse, MangaSearchResult, UpdateMangaRequest
+from app.schema.manga import (
+    MangaAdminResponse,
+    MangaListResponse,
+    MangaSearchResult,
+    UpdateMangaRequest,
+)
 from app.service import collection_service
 
 router = APIRouter(prefix="/manga", tags=["manga"])
+
+PAGE_SIZE = 20
+
+
+@router.get("", response_model=MangaListResponse)
+def list_manga(
+    page: int = Query(default=1, ge=1),
+    _admin_id: int = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> MangaListResponse:
+    items, total = collection_service.list_manga(db, page, PAGE_SIZE)
+    return MangaListResponse(
+        items=[MangaSearchResult(id=m.id, title=m.title, category=m.category) for m in items],
+        page=page,
+        page_size=PAGE_SIZE,
+        total=total,
+    )
 
 
 @router.get("/search", response_model=list[MangaSearchResult])

@@ -14,6 +14,10 @@ const props = defineProps<{
   item: CollectionItem
 }>()
 
+const emit = defineEmits<{
+  changed: []
+}>()
+
 const store = useCollectionStore()
 
 const isDropped = computed(() => props.item.status === 'dropped')
@@ -38,6 +42,7 @@ async function updateRating(next: number | null) {
 
 async function changeStatus(next: ReadingStatus) {
   await store.update(props.item.id, { status: next })
+  emit('changed')
 }
 
 function askDelete() {
@@ -47,6 +52,7 @@ function askDelete() {
 async function confirmDelete() {
   confirmDeleteOpen.value = false
   await store.remove(props.item.id)
+  emit('changed')
 }
 </script>
 

@@ -3,22 +3,25 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.core.chinese import normalize_chinese, to_traditional
+from app.core.search import like_pattern
 from app.model import Manga, MangaCategory
-
-_LIKE_ESCAPE_MAP = str.maketrans({"%": "\\%", "_": "\\_", "\\": "\\\\"})
-
-
-def _escape_like(s: str) -> str:
-    return s.translate(_LIKE_ESCAPE_MAP)
 
 
 def get_by_id(db: Session, manga_id: int) -> Manga | None:
     return db.get(Manga, manga_id)
 
 
+def list_paginated(db: Session, offset: int, limit: int) -> list[Manga]:
+    stmt = select(Manga).order_by(Manga.created_at.desc()).offset(offset).limit(limit)
+    return list(db.scalars(stmt))
+
+
+def count_all(db: Session) -> int:
+    return db.scalar(select(func.count()).select_from(Manga)) or 0
+
+
 def search_by_title(db: Session, query: str, limit: int = 20) -> list[Manga]:
-    normalized_query = normalize_chinese(query)
-    pattern = f"%{_escape_like(normalized_query)}%"
+    pattern = like_pattern(normalize_chinese(query))
     stmt = (
         select(Manga)
         .where(Manga.normalized_title.ilike(pattern, escape="\\"))

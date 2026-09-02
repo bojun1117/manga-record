@@ -19,6 +19,13 @@ def search_manga(db: Session, query: str) -> list[Manga]:
     return manga_repository.search_by_title(db, query)
 
 
+def list_manga(db: Session, page: int, page_size: int) -> tuple[list[Manga], int]:
+    offset = (page - 1) * page_size
+    items = manga_repository.list_paginated(db, offset, page_size)
+    total = manga_repository.count_all(db)
+    return items, total
+
+
 def update_manga(
     db: Session,
     manga_id: int,
@@ -77,8 +84,37 @@ def create_collection(
     return entry, manga
 
 
-def list_collections(db: Session, member_id: int) -> list[tuple[MemberManga, Manga]]:
-    return member_manga_repository.list_by_member(db, member_id)
+def list_collections_page(
+    db: Session,
+    member_id: int,
+    statuses: list[ReadingStatus] | None,
+    category: MangaCategory | None,
+    query: str | None,
+    page: int,
+    page_size: int,
+) -> tuple[list[tuple[MemberManga, Manga]], int]:
+    normalized_query = normalize_chinese(query) if query else None
+    offset = (page - 1) * page_size
+    items = member_manga_repository.list_filtered(
+        db, member_id, statuses, category, normalized_query, offset, page_size
+    )
+    total = member_manga_repository.count_filtered(db, member_id, statuses, category, normalized_query)
+    return items, total
+
+
+def get_collection_stats(db: Session, member_id: int) -> dict[str, int]:
+    counts = member_manga_repository.count_by_status(db, member_id)
+    plan_to_read = counts.get(ReadingStatus.PLAN_TO_READ, 0)
+    reading = counts.get(ReadingStatus.READING, 0)
+    completed = counts.get(ReadingStatus.COMPLETED, 0)
+    dropped = counts.get(ReadingStatus.DROPPED, 0)
+    return {
+        "total": plan_to_read + reading + completed + dropped,
+        "plan_to_read": plan_to_read,
+        "reading": reading,
+        "completed": completed,
+        "dropped": dropped,
+    }
 
 
 def _get_owned_entry(db: Session, member_id: int, entry_id: int) -> tuple[MemberManga, Manga]:

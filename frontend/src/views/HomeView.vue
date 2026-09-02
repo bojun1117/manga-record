@@ -1,20 +1,23 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { RouterLink, useRouter } from 'vue-router'
-import type { MangaCategory, ReadingStatus } from '@/types/manga'
+import type { CollectionItem, MangaCategory, ReadingStatus } from '@/types/manga'
 import { useAuthStore } from '@/stores/auth'
 import { useCollectionStore } from '@/stores/collection'
+import { getCollectionStatsApi, listCollectionsApi, type CollectionStats } from '@/api/collections'
+import { ApiException } from '@/api/client'
 import MangaCard from '@/components/MangaCard.vue'
 import AddMangaModal from '@/components/AddMangaModal.vue'
 import AppToast from '@/components/AppToast.vue'
-import { normalizeChinese } from '@/utils/chinese'
 import { STATUS_OPTIONS, CATEGORY_OPTIONS } from '@/constants/manga'
+
+const PAGE_SIZE = 30
 
 const router = useRouter()
 const auth = useAuthStore()
 const store = useCollectionStore()
-const { collections, loading, loaded, lastError } = storeToRefs(store)
+const { lastError } = storeToRefs(store)
 
 const addModalOpen = ref(false)
 
@@ -35,60 +38,166 @@ const CATEGORY_FILTERS: ReadonlyArray<{ value: CategoryFilter; label: string }> 
   ...CATEGORY_OPTIONS,
 ]
 
-const sortedCollections = computed(() =>
-  [...collections.value].sort(
-    (a, b) => new Date(b.lastReadAt).getTime() - new Date(a.lastReadAt).getTime(),
-  ),
-)
-
-const normalizedQuery = computed(() => normalizeChinese(searchQuery.value.trim()))
-
-function categoryOk(c: { category: MangaCategory }) {
-  return activeCategory.value === 'all' || c.category === activeCategory.value
-}
-
-function queryOk(c: { title: string }) {
-  return (
-    normalizedQuery.value === '' || normalizeChinese(c.title).includes(normalizedQuery.value)
-  )
-}
-
-const visibleCollections = computed(() =>
-  sortedCollections.value.filter((c) => {
-    const statusOk =
-      activeStatus.value === 'all' ? c.status !== 'plan_to_read' : c.status === activeStatus.value
-    return statusOk && categoryOk(c) && queryOk(c)
-  }),
-)
-
-const planToReadCollections = computed(() =>
-  sortedCollections.value.filter((c) => c.status === 'plan_to_read' && categoryOk(c) && queryOk(c)),
-)
-
-const stats = computed(() => {
-  const total = collections.value.length
-  const planToRead = collections.value.filter((c) => c.status === 'plan_to_read').length
-  const reading = collections.value.filter((c) => c.status === 'reading').length
-  const completed = collections.value.filter((c) => c.status === 'completed').length
-  const dropped = collections.value.filter((c) => c.status === 'dropped').length
-  return { total, planToRead, reading, completed, dropped }
+const stats = ref<CollectionStats>({
+  total: 0,
+  planToRead: 0,
+  reading: 0,
+  completed: 0,
+  dropped: 0,
 })
 
-onMounted(async () => {
-  if (auth.isAuthenticated && !loaded.value) {
-    try {
-      await store.getAll()
-    } catch {
-      if (!auth.isAuthenticated) {
-        router.replace({ name: 'login' })
-      }
+const mainItems = ref<CollectionItem[]>([])
+const mainPage = ref(1)
+const mainTotal = ref(0)
+const mainLoading = ref(false)
+const mainLoaded = ref(false)
+
+const planItems = ref<CollectionItem[]>([])
+const planPage = ref(1)
+const planTotal = ref(0)
+const planLoading = ref(false)
+
+let searchTimer: number | null = null
+
+function mainStatuses(): ReadingStatus[] {
+  if (activeStatus.value === 'all') return ['reading', 'dropped', 'completed']
+  return [activeStatus.value]
+}
+
+function handleLoadError(err: unknown) {
+  if (err instanceof ApiException) {
+    if (err.isUnauthorized) {
+      auth.logout()
+      router.replace({ name: 'login' })
+      return
     }
+    lastError.value = err.message
+  } else if (err instanceof Error) {
+    lastError.value = err.message
+  }
+}
+
+async function loadStats() {
+  const token = auth.getToken()
+  if (!token) return
+  try {
+    stats.value = await getCollectionStatsApi(token)
+  } catch (err) {
+    handleLoadError(err)
+  }
+}
+
+async function loadMain() {
+  const token = auth.getToken()
+  if (!token) return
+  mainLoading.value = true
+  try {
+    const res = await listCollectionsApi(
+      {
+        status: mainStatuses(),
+        category: activeCategory.value === 'all' ? undefined : activeCategory.value,
+        q: searchQuery.value.trim() || undefined,
+        page: mainPage.value,
+      },
+      token,
+    )
+    mainItems.value = res.items
+    mainTotal.value = res.total
+  } catch (err) {
+    handleLoadError(err)
+  } finally {
+    mainLoading.value = false
+    mainLoaded.value = true
+  }
+}
+
+async function loadPlanToRead() {
+  const token = auth.getToken()
+  if (!token) return
+  planLoading.value = true
+  try {
+    const res = await listCollectionsApi(
+      {
+        status: ['plan_to_read'],
+        category: activeCategory.value === 'all' ? undefined : activeCategory.value,
+        q: searchQuery.value.trim() || undefined,
+        page: planPage.value,
+      },
+      token,
+    )
+    planItems.value = res.items
+    planTotal.value = res.total
+  } catch (err) {
+    handleLoadError(err)
+  } finally {
+    planLoading.value = false
+  }
+}
+
+function loadAll() {
+  loadStats()
+  loadMain()
+  loadPlanToRead()
+}
+
+function resetAndReload() {
+  mainPage.value = 1
+  planPage.value = 1
+  loadAll()
+}
+
+watch([activeStatus, activeCategory], resetAndReload)
+
+watch(searchQuery, () => {
+  if (searchTimer !== null) window.clearTimeout(searchTimer)
+  searchTimer = window.setTimeout(resetAndReload, 300)
+})
+
+function mainPrevPage() {
+  if (mainPage.value > 1) {
+    mainPage.value -= 1
+    loadMain()
+  }
+}
+
+function mainNextPage() {
+  if (mainPage.value * PAGE_SIZE < mainTotal.value) {
+    mainPage.value += 1
+    loadMain()
+  }
+}
+
+function planPrevPage() {
+  if (planPage.value > 1) {
+    planPage.value -= 1
+    loadPlanToRead()
+  }
+}
+
+function planNextPage() {
+  if (planPage.value * PAGE_SIZE < planTotal.value) {
+    planPage.value += 1
+    loadPlanToRead()
+  }
+}
+
+onMounted(() => {
+  if (auth.isAuthenticated) {
+    loadAll()
   }
 })
 
+function onCardChanged() {
+  loadAll()
+}
+
+function onAdded() {
+  addModalOpen.value = false
+  resetAndReload()
+}
+
 function logout() {
   auth.logout()
-  store.reset()
   router.replace({ name: 'login' })
 }
 </script>
@@ -189,7 +298,7 @@ function logout() {
     </div>
 
     <div
-      v-if="loading && !loaded"
+      v-if="mainLoading && !mainLoaded"
       class="grid gap-3"
       style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))"
     >
@@ -202,44 +311,88 @@ function logout() {
 
     <template v-else>
       <div
-        v-if="visibleCollections.length > 0"
+        v-if="mainItems.length > 0"
         class="grid gap-3"
         style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))"
       >
-        <MangaCard v-for="item in visibleCollections" :key="item.id" :item="item" />
+        <MangaCard v-for="item in mainItems" :key="item.id" :item="item" @changed="onCardChanged" />
       </div>
       <div
         v-else
         class="rounded-lg border border-dashed border-neutral-300 bg-white px-6 py-16 text-center"
       >
-        <p v-if="collections.length === 0" class="text-sm text-neutral-500">
+        <p v-if="stats.total === 0" class="text-sm text-neutral-500">
           還沒有任何漫畫,點右上「＋ 新增漫畫」開始記錄。
         </p>
-        <p v-else-if="normalizedQuery !== ''" class="text-sm text-neutral-500">
+        <p v-else-if="searchQuery.trim() !== ''" class="text-sm text-neutral-500">
           沒有符合「{{ searchQuery.trim() }}」的漫畫。
         </p>
         <p v-else class="text-sm text-neutral-500">這個篩選條件下沒有漫畫。</p>
       </div>
 
+      <div v-if="mainTotal > PAGE_SIZE" class="mt-4 flex items-center justify-center gap-3">
+        <button
+          type="button"
+          class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="mainPage <= 1 || mainLoading"
+          @click="mainPrevPage"
+        >
+          上一頁
+        </button>
+        <span class="text-[13px] text-neutral-500">
+          第 {{ mainPage }} 頁 · 共 {{ Math.ceil(mainTotal / PAGE_SIZE) }} 頁（{{ mainTotal }} 筆）
+        </span>
+        <button
+          type="button"
+          class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="mainPage * PAGE_SIZE >= mainTotal || mainLoading"
+          @click="mainNextPage"
+        >
+          下一頁
+        </button>
+      </div>
+
       <section v-if="stats.planToRead > 0" class="mt-8 border-t border-neutral-200 pt-5">
         <h2 class="mb-3 text-lg font-semibold text-neutral-800">
           待看清單
-          <span class="text-[13px] font-normal text-neutral-400">
-            ({{ planToReadCollections.length }})
-          </span>
+          <span class="text-[13px] font-normal text-neutral-400">({{ stats.planToRead }})</span>
         </h2>
         <div
-          v-if="planToReadCollections.length > 0"
+          v-if="planItems.length > 0"
           class="grid gap-3"
           style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))"
         >
-          <MangaCard v-for="item in planToReadCollections" :key="item.id" :item="item" />
+          <MangaCard v-for="item in planItems" :key="item.id" :item="item" @changed="onCardChanged" />
         </div>
-        <p v-else class="text-sm text-neutral-500">這個篩選條件下沒有待看的漫畫。</p>
+        <p v-else-if="!planLoading" class="text-sm text-neutral-500">
+          這個篩選條件下沒有待看的漫畫。
+        </p>
+
+        <div v-if="planTotal > PAGE_SIZE" class="mt-4 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="planPage <= 1 || planLoading"
+            @click="planPrevPage"
+          >
+            上一頁
+          </button>
+          <span class="text-[13px] text-neutral-500">
+            第 {{ planPage }} 頁 · 共 {{ Math.ceil(planTotal / PAGE_SIZE) }} 頁（{{ planTotal }} 筆）
+          </span>
+          <button
+            type="button"
+            class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="planPage * PAGE_SIZE >= planTotal || planLoading"
+            @click="planNextPage"
+          >
+            下一頁
+          </button>
+        </div>
       </section>
     </template>
 
-    <AddMangaModal :open="addModalOpen" @close="addModalOpen = false" @added="addModalOpen = false" />
+    <AddMangaModal :open="addModalOpen" @close="addModalOpen = false" @added="onAdded" />
 
     <AppToast :message="lastError" variant="error" @dismiss="store.clearError()" />
   </main>

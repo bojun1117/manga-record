@@ -6,9 +6,20 @@ export interface UpdateMangaInput {
   category?: MangaCategory
 }
 
+export interface MangaListResult {
+  items: MangaSearchResult[]
+  page: number
+  pageSize: number
+  total: number
+}
+
 export function searchMangaApi(query: string, token: string): Promise<MangaSearchResult[]> {
   const q = encodeURIComponent(query)
   return apiRequest<MangaSearchResult[]>(`/manga/search?q=${q}`, { token })
+}
+
+export function listMangaApi(page: number, token: string): Promise<MangaListResult> {
+  return apiRequest<MangaListResult>(`/manga?page=${page}`, { token })
 }
 
 export function updateMangaApi(

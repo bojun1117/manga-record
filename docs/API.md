@@ -13,10 +13,10 @@ REST API 規格。詳細資料模型定義見 `DATA_MODEL.md`。
 - §6：`POST /auth/login`
 - §7：`GET /auth/me`
 - §8：`GET /manga/search`
-- §9–§11：`/collections` 系列 endpoint
-- §12：`PATCH /manga/{id}`（admin only）
-- §13：驗證規則總表
-- §14：錯誤碼總表
+- §9–§12：`/collections` 系列 endpoint
+- §13–§14：`GET /manga`、`PATCH /manga/{id}`（admin only）
+- §15：驗證規則總表
+- §16：錯誤碼總表
 
 ---
 
@@ -38,7 +38,7 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 
 未帶 / 過期 / 簽章錯誤 → 回 `401 UNAUTHORIZED`。
 
-`PATCH /manga/{id}` 除了要有效 JWT，還要求 `member.is_admin = true`，否則回 `403 FORBIDDEN`。
+`GET /manga`、`PATCH /manga/{id}` 除了要有效 JWT，還要求 `member.is_admin = true`，否則回 `403 FORBIDDEN`。
 
 ### 1.3 內容格式
 
@@ -68,12 +68,13 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 - 冪等性：`GET`、`PATCH`、`DELETE` 冪等；`POST /auth/register`、`POST /collections`（新增收藏）**不冪等**
 - **PATCH 語意**：partial update，只更新 body 出現的 key
 - 回傳完整資源：`POST /collections`、`PATCH /collections/{id}`、`PATCH /manga/{id}` 成功時回傳更新後的完整資源
+- 分頁清單一律固定頁大小、`page` 從 1 起算，見 §3.6
 
 ---
 
 ## 3. 資料模型（API 視角）
 
-### 3.1 收藏項目（`GET/POST /collections` 回傳）
+### 3.1 收藏項目（`CollectionItem`）
 
 ```ts
 {
@@ -91,7 +92,7 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 }
 ```
 
-### 3.2 漫畫搜尋結果（`GET /manga/search` 回傳）
+### 3.2 漫畫搜尋結果（`MangaSearchResult`，`GET /manga/search`、`GET /manga` 共用）
 
 ```ts
 {
@@ -130,6 +131,35 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 
 （中英對照見 `DATA_MODEL.md`）
 
+### 3.6 分頁清單通用格式
+
+`GET /collections`、`GET /manga` 都回傳這個形狀（`items` 的型別依 endpoint 不同）：
+
+```ts
+{
+  items: T[]
+  page: number       // 從 1 起算，對應 request 帶的 page（未帶則預設 1）
+  pageSize: number    // 固定值，`GET /collections` 是 30，`GET /manga` 是 20
+  total: number        // 符合目前篩選條件的總筆數（不是 items.length）
+}
+```
+
+前端用 `Math.ceil(total / pageSize)` 算總頁數；`page * pageSize >= total` 代表已經是最後一頁。
+
+### 3.7 收藏統計（`GET /collections/stats` 回傳）
+
+```ts
+{
+  total: number
+  planToRead: number
+  reading: number
+  completed: number
+  dropped: number
+}
+```
+
+不受 `GET /collections` 的 `status`/`category`/`q` 篩選影響，永遠是目前使用者的全站總覽數字。
+
 ---
 
 ## 4. Endpoint 一覽
@@ -140,8 +170,10 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 | `POST` | `/auth/login` | 帳密換 JWT | ❌ | `200 OK` + `{token}` |
 | `GET` | `/auth/me` | 目前登入者資訊（含 `isAdmin`） | ✅ | `200 OK` + §3.3 |
 | `GET` | `/manga/search?q=` | 模糊查詢漫畫目錄 | ✅ | `200 OK` + `MangaSearchResult[]` |
+| `GET` | `/manga?page=` | 分頁列出全站漫畫目錄，最新建立優先（**僅 admin**） | ✅ admin | `200 OK` + §3.6 |
 | `PATCH` | `/manga/{id}` | 編輯漫畫目錄（**僅 admin**） | ✅ admin | `200 OK` + §3.4 |
-| `GET` | `/collections` | 列出目前使用者的收藏 | ✅ | `200 OK` + `CollectionItem[]` |
+| `GET` | `/collections?...` | 分頁列出目前使用者的收藏，可用 `status`/`category`/`q` 篩選 | ✅ | `200 OK` + §3.6 |
+| `GET` | `/collections/stats` | 目前使用者的收藏統計（不受篩選影響） | ✅ | `200 OK` + §3.7 |
 | `POST` | `/collections` | 新增收藏 | ✅ | `201 Created` + `CollectionItem` |
 | `PATCH` | `/collections/{id}` | 更新收藏（狀態/進度/評分） | ✅ | `200 OK` + `CollectionItem` |
 | `DELETE` | `/collections/{id}` | 移除收藏 | ✅ | `204 No Content` |
@@ -220,7 +252,7 @@ GET /auth/me HTTP/1.1
 Authorization: Bearer <jwt>
 ```
 
-回傳目前登入者的帳號資訊（見 §3.3），前端用 `isAdmin` 決定要不要顯示「管理目錄」入口——後端 `PATCH /manga/{id}` 本身也會再檢查一次 `is_admin`，前端隱藏入口只是 UX，不是唯一的權限防線。
+回傳目前登入者的帳號資訊（見 §3.3），前端用 `isAdmin` 決定要不要顯示「管理目錄」入口——後端 `GET /manga`、`PATCH /manga/{id}` 本身也會再檢查一次 `is_admin`，前端隱藏入口只是 UX，不是唯一的權限防線。
 
 ### 錯誤
 
@@ -241,7 +273,7 @@ Authorization: Bearer <jwt>
 
 - `q`：必填，至少 1 字元（trim 後）
 - 查詢邏輯：`q` 經繁簡正規化 + 小寫後，對 `manga.normalized_title` 做 `ILIKE '%...%'`
-- 回傳最多 20 筆，不分頁（目錄規模夠小時足夠；未來成長再加分頁或 trigram 索引優化）
+- 回傳最多 20 筆，不分頁（給輸入書名時即時建議用；要瀏覽/管理全站目錄用 §13 的 `GET /manga`）
 
 ### Response 200
 
@@ -257,16 +289,38 @@ Authorization: Bearer <jwt>
 
 ## 9. `GET /collections`
 
+### Request
+
 ```http
-GET /collections HTTP/1.1
+GET /collections?status=reading&status=dropped&status=completed&category=hot_blooded&q=進擊&page=1 HTTP/1.1
 Authorization: Bearer <jwt>
 ```
 
-回傳目前登入使用者的所有收藏（join `manga` 取得 title/category）。不保證排序，前端依 `lastReadAt` desc 自行排序。無資料回 `[]`。
+- `status`：選填，可重複帶多次（`status=reading&status=dropped`），代表「符合其中任一個狀態」；完全不帶 = 不篩選狀態（四種都算，包含 `plan_to_read`）
+- `category`：選填，單一 `MangaCategory`；不帶 = 不篩選分類
+- `q`：選填，比照 `GET /manga/search` 的繁簡正規化模糊比對，對象是這個使用者收藏的 `manga.title`
+- `page`：選填，預設 1
+
+首頁「待看清單」是獨立區塊，前端對它另外呼叫一次 `GET /collections?status=plan_to_read&...`（`category`/`q` 沿用同一組篩選，只有 `status` 固定成 `plan_to_read`），不是同一份分頁結果裡再切一次。
+
+### Response 200
+
+回傳 §3.6 的分頁格式，`items` 是 `CollectionItem[]`（join `manga` 取得 title/category）。固定依 `lastReadAt` desc 排序。
 
 ---
 
-## 10. `POST /collections`
+## 10. `GET /collections/stats`
+
+```http
+GET /collections/stats HTTP/1.1
+Authorization: Bearer <jwt>
+```
+
+回傳 §3.7，用於首頁頂部「共 X 部 · 待看 Y · ...」跟「待看清單 (N)」的數字——這兩處都是全站總覽，不受目前的 `status`/`category`/`q` 篩選影響，所以獨立一個不帶篩選參數的 endpoint。
+
+---
+
+## 11. `POST /collections`
 
 ### Request
 
@@ -329,7 +383,7 @@ Authorization: Bearer <jwt>
 
 ---
 
-## 11. `PATCH /collections/{id}` / `DELETE /collections/{id}`
+## 12. `PATCH /collections/{id}` / `DELETE /collections/{id}`
 
 `PATCH`：body 可帶 `status` / `currentVolume` / `currentChapter` / `rating` 任意子集，partial update。動到 `currentVolume`/`currentChapter` 時 `lastReadAt` 自動刷新。`mangaName`/`category` 不可透過此 endpoint 修改（漫畫本身的屬性不因為個人收藏異動；要換這筆收藏對應的漫畫，語意上應該是刪除重建，不是 PATCH）。
 
@@ -346,7 +400,29 @@ Authorization: Bearer <jwt>
 
 ---
 
-## 12. `PATCH /manga/{id}`（admin only）
+## 13. `GET /manga`（admin only）
+
+```http
+GET /manga?page=1 HTTP/1.1
+Authorization: Bearer <jwt>
+```
+
+分頁列出全站漫畫目錄，依 `created_at` desc 排序（最新建立的在最前面）。給 admin 管理頁面「一開始先瀏覽」用；輸入關鍵字之後管理頁面改叫 §8 的 `GET /manga/search`（不分頁、依標題排序），兩個 endpoint 分工不同，不是同一個查詢加減參數而已。
+
+### Response 200
+
+回傳 §3.6，`items` 是 `MangaSearchResult[]`，`pageSize` 固定 20。
+
+### 錯誤
+
+| Status | code | 情境 |
+|---|---|---|
+| 401 | `UNAUTHORIZED` | 未帶/無效 token |
+| 403 | `FORBIDDEN` | 目前登入的帳號不是 admin |
+
+---
+
+## 14. `PATCH /manga/{id}`（admin only）
 
 ### Request
 
@@ -358,7 +434,7 @@ Authorization: Bearer <jwt>
 { "title": "進擊的巨人", "category": "adventure" }
 ```
 
-`title`、`category` 都選填，只更新 body 出現的 key。改 `title` 時後端會用新標題重新計算 `normalized_title`（同樣先轉繁體，見 §10），並檢查有沒有撞到其他 manga 的 `normalized_title`。
+`title`、`category` 都選填，只更新 body 出現的 key。改 `title` 時後端會用新標題重新計算 `normalized_title`（同樣先轉繁體，見 §11），並檢查有沒有撞到其他 manga 的 `normalized_title`。
 
 跟 `PATCH /collections/{id}` 不同：這裡改的是全站共用的 `manga` 目錄本身，不是某個人的收藏，所有收藏這部漫畫的使用者都會看到新標題/分類。
 
@@ -383,7 +459,7 @@ Authorization: Bearer <jwt>
 
 ---
 
-## 13. 驗證規則總表
+## 15. 驗證規則總表
 
 | 欄位 | 規則 |
 |---|---|
@@ -394,17 +470,18 @@ Authorization: Bearer <jwt>
 | `status` | enum 四選一 |
 | `currentVolume` / `currentChapter` | 整數 0–9999 或 `null` |
 | `rating` | 整數 1–5 或 `null`，任何 status 都允許 |
+| `page` | 整數，≥ 1，未帶預設 1 |
 
 ---
 
-## 14. 錯誤碼總表
+## 16. 錯誤碼總表
 
 | code | Status | 說明 |
 |---|---|---|
 | `VALIDATION_ERROR` | 400 | 欄位驗證失敗 |
 | `MALFORMED_JSON` | 400 | body 不是合法 JSON |
 | `UNAUTHORIZED` | 401 | 未認證/認證失敗 |
-| `FORBIDDEN` | 403 | 認證成功但無權限操作該資源（含非 admin 呼叫 `PATCH /manga/{id}`） |
+| `FORBIDDEN` | 403 | 認證成功但無權限操作該資源（含非 admin 呼叫 `GET /manga`、`PATCH /manga/{id}`） |
 | `USERNAME_TAKEN` | 409 | 註冊時 username 已存在 |
 | `ALREADY_IN_COLLECTION` | 409 | 重複收藏同一部漫畫 |
 | `DUPLICATE_TITLE` | 409 | `PATCH /manga/{id}` 改完的標題跟另一部既有 manga 撞了 |

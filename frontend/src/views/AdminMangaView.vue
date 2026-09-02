@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { MangaCategory } from '@/types/manga'
 import { useAuthStore } from '@/stores/auth'
-import { searchMangaApi, updateMangaApi } from '@/api/manga'
+import { listMangaApi, searchMangaApi, updateMangaApi } from '@/api/manga'
 import { ApiException } from '@/api/client'
 import { CATEGORY_OPTIONS } from '@/constants/manga'
 import CategoryBadge from '@/components/CategoryBadge.vue'
@@ -20,8 +20,12 @@ const auth = useAuthStore()
 
 const searchQuery = ref('')
 const results = ref<MangaRow[]>([])
-const searchLoading = ref(false)
+const loading = ref(false)
 let searchTimer: number | null = null
+
+const page = ref(1)
+const total = ref(0)
+const PAGE_SIZE = 20
 
 const editingId = ref<number | null>(null)
 const draftTitle = ref('')
@@ -29,27 +33,57 @@ const draftCategory = ref<MangaCategory>('other')
 const saving = ref(false)
 const errorMsg = ref<string | null>(null)
 
+const browsing = (): boolean => searchQuery.value.trim() === ''
+
 watch(searchQuery, (q) => {
   if (searchTimer !== null) window.clearTimeout(searchTimer)
   const trimmed = q.trim()
   if (trimmed.length === 0) {
-    results.value = []
+    loadPage(1)
     return
   }
   searchTimer = window.setTimeout(() => runSearch(trimmed), 300)
 })
 
+onMounted(() => {
+  loadPage(1)
+})
+
+async function loadPage(nextPage: number) {
+  const token = auth.getToken()
+  if (!token) return
+  loading.value = true
+  try {
+    const res = await listMangaApi(nextPage, token)
+    results.value = res.items
+    page.value = res.page
+    total.value = res.total
+  } catch (err) {
+    errorMsg.value = err instanceof ApiException ? err.message : '載入失敗'
+  } finally {
+    loading.value = false
+  }
+}
+
 async function runSearch(q: string) {
   const token = auth.getToken()
   if (!token) return
-  searchLoading.value = true
+  loading.value = true
   try {
     results.value = await searchMangaApi(q, token)
   } catch (err) {
     errorMsg.value = err instanceof ApiException ? err.message : '搜尋失敗'
   } finally {
-    searchLoading.value = false
+    loading.value = false
   }
+}
+
+function prevPage() {
+  if (page.value > 1) loadPage(page.value - 1)
+}
+
+function nextPage() {
+  if (page.value * PAGE_SIZE < total.value) loadPage(page.value + 1)
 }
 
 function startEdit(row: MangaRow) {
@@ -119,7 +153,7 @@ function back() {
         aria-label="搜尋漫畫名稱"
         class="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
       />
-      <p v-if="searchLoading" class="mt-1 text-[12px] text-neutral-400">搜尋中…</p>
+      <p v-if="loading" class="mt-1 text-[12px] text-neutral-400">載入中…</p>
     </div>
 
     <ul v-if="results.length > 0" class="space-y-2">
@@ -180,9 +214,31 @@ function back() {
         </template>
       </li>
     </ul>
-    <p v-else-if="searchQuery.trim() !== '' && !searchLoading" class="text-sm text-neutral-500">
-      沒有符合的漫畫。
+    <p v-else-if="!loading" class="text-sm text-neutral-500">
+      {{ searchQuery.trim() !== '' ? '沒有符合的漫畫。' : '目前沒有任何漫畫。' }}
     </p>
+
+    <div v-if="browsing() && total > PAGE_SIZE" class="mt-4 flex items-center justify-center gap-3">
+      <button
+        type="button"
+        class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+        :disabled="page <= 1 || loading"
+        @click="prevPage"
+      >
+        上一頁
+      </button>
+      <span class="text-[13px] text-neutral-500">
+        第 {{ page }} 頁 · 共 {{ Math.ceil(total / PAGE_SIZE) }} 頁（{{ total }} 筆）
+      </span>
+      <button
+        type="button"
+        class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
+        :disabled="page * PAGE_SIZE >= total || loading"
+        @click="nextPage"
+      >
+        下一頁
+      </button>
+    </div>
 
     <AppToast :message="errorMsg" variant="error" @dismiss="errorMsg = null" />
   </main>

@@ -42,3 +42,18 @@ class CollectionItemResponse(CamelModel):
     last_read_at: datetime
     created_at: datetime
     updated_at: datetime
+
+
+class CollectionListResponse(CamelModel):
+    items: list[CollectionItemResponse]
+    page: int
+    page_size: int
+    total: int
+
+
+class CollectionStatsResponse(CamelModel):
+    total: int
+    plan_to_read: int
+    reading: int
+    completed: int
+    dropped: int

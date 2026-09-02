@@ -33,3 +33,10 @@ class MangaAdminResponse(CamelModel):
     category: MangaCategory
     created_at: datetime
     updated_at: datetime
+
+
+class MangaListResponse(CamelModel):
+    items: list[MangaSearchResult]
+    page: int
+    page_size: int
+    total: int
