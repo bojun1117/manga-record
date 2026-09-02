@@ -207,8 +207,13 @@ function back() {
         </template>
         <template v-else>
           <div class="flex items-center justify-between gap-2">
-            <div class="flex items-center gap-2">
-              <p class="m-0 text-sm font-medium text-neutral-900">{{ row.title }}</p>
+            <div class="flex min-w-0 items-center gap-2">
+              <p
+                class="m-0 w-48 flex-shrink-0 truncate text-sm font-medium text-neutral-900"
+                :title="row.title"
+              >
+                {{ row.title }}
+              </p>
               <CategoryBadge :category="row.category" />
             </div>
             <button
