@@ -169,14 +169,22 @@ function back() {
               type="text"
               class="w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
-            <select
-              v-model="draftCategory"
-              class="w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm text-neutral-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-            >
-              <option v-for="opt in CATEGORY_OPTIONS" :key="opt.value" :value="opt.value">
+            <div class="flex flex-nowrap gap-2 overflow-x-auto pb-1">
+              <button
+                v-for="opt in CATEGORY_OPTIONS"
+                :key="opt.value"
+                type="button"
+                class="flex-shrink-0 rounded-full border px-3 py-1 text-[13px] transition"
+                :class="
+                  draftCategory === opt.value
+                    ? 'border-neutral-900 bg-neutral-900 text-white'
+                    : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50'
+                "
+                @click="draftCategory = opt.value"
+              >
                 {{ opt.label }}
-              </option>
-            </select>
+              </button>
+            </div>
             <div class="flex justify-end gap-2">
               <button
                 type="button"
