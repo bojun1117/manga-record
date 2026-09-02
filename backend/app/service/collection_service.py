@@ -4,13 +4,45 @@ from typing import Any
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.errors import AlreadyInCollectionError, ForbiddenError, NotFoundError
+from app.core.chinese import normalize_chinese, to_traditional
+from app.core.errors import (
+    AlreadyInCollectionError,
+    DuplicateTitleError,
+    ForbiddenError,
+    NotFoundError,
+)
 from app.model import Manga, MangaCategory, MemberManga, ReadingStatus
 from app.repository import manga_repository, member_manga_repository
 
 
 def search_manga(db: Session, query: str) -> list[Manga]:
     return manga_repository.search_by_title(db, query)
+
+
+def update_manga(
+    db: Session,
+    manga_id: int,
+    title: str | None,
+    category: MangaCategory | None,
+) -> Manga:
+    manga = manga_repository.get_by_id(db, manga_id)
+    if manga is None:
+        raise NotFoundError("manga not found")
+
+    if title is not None:
+        manga.title = to_traditional(title)
+        manga.normalized_title = normalize_chinese(title)
+    if category is not None:
+        manga.category = category
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise DuplicateTitleError("this title is already used by another manga") from exc
+
+    db.refresh(manga)
+    return manga
 
 
 def create_collection(

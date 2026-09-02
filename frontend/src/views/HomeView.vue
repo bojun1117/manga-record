@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import type { MangaCategory, ReadingStatus } from '@/types/manga'
 import { useAuthStore } from '@/stores/auth'
 import { useCollectionStore } from '@/stores/collection'
@@ -111,6 +111,13 @@ function logout() {
         >
           ＋ 新增漫畫
         </button>
+        <RouterLink
+          v-if="auth.isAdmin"
+          :to="{ name: 'admin-manga' }"
+          class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50"
+        >
+          管理目錄
+        </RouterLink>
         <button
           type="button"
           class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-500 transition hover:bg-neutral-50"

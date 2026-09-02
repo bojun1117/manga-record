@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/auth'
 import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
+import AdminMangaView from '@/views/AdminMangaView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -24,6 +25,12 @@ const router = createRouter({
       name: 'home',
       component: HomeView,
     },
+    {
+      path: '/admin/manga',
+      name: 'admin-manga',
+      component: AdminMangaView,
+      meta: { admin: true },
+    },
   ],
 })
 
@@ -38,6 +45,10 @@ router.beforeEach((to) => {
 
   if (!auth.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.meta.admin && !auth.isAdmin) {
+    return { name: 'home' }
   }
 
   return true

@@ -30,3 +30,11 @@ export interface MangaSearchResult {
   title: string
   category: MangaCategory
 }
+
+export interface MangaAdminItem {
+  id: number
+  title: string
+  category: MangaCategory
+  createdAt: string
+  updatedAt: string
+}

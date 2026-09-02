@@ -39,3 +39,8 @@ class UsernameTakenError(AppError):
 class AlreadyInCollectionError(AppError):
     status_code = 409
     code = "ALREADY_IN_COLLECTION"
+
+
+class DuplicateTitleError(AppError):
+    status_code = 409
+    code = "DUPLICATE_TITLE"

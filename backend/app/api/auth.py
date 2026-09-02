@@ -37,4 +37,4 @@ def me(
     member = member_repository.get_by_id(db, member_id)
     if member is None:
         raise NotFoundError("member not found")
-    return MemberResponse(id=member.id, username=member.username)
+    return MemberResponse(id=member.id, username=member.username, is_admin=member.is_admin)

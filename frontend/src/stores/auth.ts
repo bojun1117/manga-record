@@ -27,6 +27,7 @@ function writeStoredToken(token: string | null): void {
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(readStoredToken())
   const username = ref<string | null>(null)
+  const isAdmin = ref(false)
 
   const isAuthenticated = computed(() => token.value !== null)
 
@@ -40,11 +41,13 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = res.token
     writeStoredToken(res.token)
     username.value = usernameInput
+    await refreshProfile()
   }
 
   function logout(): void {
     token.value = null
     username.value = null
+    isAdmin.value = false
     writeStoredToken(null)
   }
 
@@ -52,11 +55,12 @@ export const useAuthStore = defineStore('auth', () => {
     return token.value
   }
 
-  async function restoreSession(): Promise<void> {
+  async function refreshProfile(): Promise<void> {
     if (token.value === null) return
     try {
       const me = await meApi(token.value)
       username.value = me.username
+      isAdmin.value = me.isAdmin
     } catch (err) {
       if (err instanceof ApiException && err.isUnauthorized) {
         logout()
@@ -64,9 +68,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function restoreSession(): Promise<void> {
+    await refreshProfile()
+  }
+
   return {
     token,
     username,
+    isAdmin,
     isAuthenticated,
     register,
     login,

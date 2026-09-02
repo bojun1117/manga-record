@@ -37,12 +37,14 @@
 id            bigserial PK             -- auto increment
 username      text UNIQUE NOT NULL     -- 3–30 字元，僅英數字與底線（實作時再細訂）
 password_hash text NOT NULL            -- bcrypt/argon2 雜湊，永不存明文
+is_admin      boolean NOT NULL DEFAULT false
 created_at    timestamptz NOT NULL
 updated_at    timestamptz NOT NULL
 ```
 
 - 密碼規則（明文，寫入前雜湊，DB 不留明文）：至少 8 字元
 - `username` 全站唯一，註冊時檢查
+- `is_admin` 為 true 的帳號可以呼叫 `PATCH /manga/{id}` 編輯全站漫畫目錄；開放註冊，這個欄位不透過 API 開放自行設定，只能由後端管理員手動調整
 
 ## `manga`
 
@@ -62,7 +64,7 @@ updated_at        timestamptz NOT NULL
   2. 代價：兩部標題完全相同但實際是不同作品的漫畫無法都存在，這階段接受這個限制
   3. 這個索引只加速「精確比對」，`GET /manga/search` 的模糊搜尋（`ILIKE '%...%'`）用不到；之後目錄變大要優化模糊搜尋，需另外加 `pg_trgm` trigram index，是不同的東西
 - 沒有 `member_id`：這張表不屬於任何人，是客觀資料
-- 這階段沒有「編輯 / 刪除 manga」的 API；`title` / `category` 一旦建立即固定（如發現打錯字，之後再補管理功能）
+- `PATCH /manga/{id}`（僅 `is_admin` 帳號）可以編輯 `title` / `category`；改 `title` 時後端會重算 `normalized_title`，撞到其他 manga 的 `normalized_title` 回 409 `DUPLICATE_TITLE`。目前還是沒有刪除 manga 的 API
 
 ## `member_manga`
 

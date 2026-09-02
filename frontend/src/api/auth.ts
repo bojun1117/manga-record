@@ -12,6 +12,7 @@ interface LoginResponse {
 interface MeResponse {
   id: number
   username: string
+  isAdmin: boolean
 }
 
 export function registerApi(username: string, password: string): Promise<RegisterResponse> {

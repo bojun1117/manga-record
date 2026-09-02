@@ -2,6 +2,8 @@ import re
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.schema.base import CamelModel
+
 _USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_]+$")
 
 
@@ -31,6 +33,7 @@ class TokenResponse(BaseModel):
     token: str
 
 
-class MemberResponse(BaseModel):
+class MemberResponse(CamelModel):
     id: int
     username: str
+    is_admin: bool

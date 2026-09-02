@@ -12,6 +12,10 @@ def _escape_like(s: str) -> str:
     return s.translate(_LIKE_ESCAPE_MAP)
 
 
+def get_by_id(db: Session, manga_id: int) -> Manga | None:
+    return db.get(Manga, manga_id)
+
+
 def search_by_title(db: Session, query: str, limit: int = 20) -> list[Manga]:
     normalized_query = normalize_chinese(query)
     pattern = f"%{_escape_like(normalized_query)}%"

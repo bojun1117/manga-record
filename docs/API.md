@@ -11,10 +11,12 @@ REST API 規格。詳細資料模型定義見 `DATA_MODEL.md`。
 - §4：endpoint 一覽
 - §5：`POST /auth/register`
 - §6：`POST /auth/login`
-- §7：`GET /manga/search`
-- §8–§10：`/collections` 系列 endpoint
-- §11：驗證規則總表
-- §12：錯誤碼總表
+- §7：`GET /auth/me`
+- §8：`GET /manga/search`
+- §9–§11：`/collections` 系列 endpoint
+- §12：`PATCH /manga/{id}`（admin only）
+- §13：驗證規則總表
+- §14：錯誤碼總表
 
 ---
 
@@ -35,6 +37,8 @@ REST API 規格。詳細資料模型定義見 `DATA_MODEL.md`。
 JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 
 未帶 / 過期 / 簽章錯誤 → 回 `401 UNAUTHORIZED`。
+
+`PATCH /manga/{id}` 除了要有效 JWT，還要求 `member.is_admin = true`，否則回 `403 FORBIDDEN`。
 
 ### 1.3 內容格式
 
@@ -63,7 +67,7 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 
 - 冪等性：`GET`、`PATCH`、`DELETE` 冪等；`POST /auth/register`、`POST /collections`（新增收藏）**不冪等**
 - **PATCH 語意**：partial update，只更新 body 出現的 key
-- 回傳完整資源：`POST /collections`、`PATCH /collections/{id}` 成功時回傳更新後的完整資源
+- 回傳完整資源：`POST /collections`、`PATCH /collections/{id}`、`PATCH /manga/{id}` 成功時回傳更新後的完整資源
 
 ---
 
@@ -97,7 +101,29 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 }
 ```
 
-### 3.3 列舉值
+### 3.3 使用者資料（`GET /auth/me` 回傳）
+
+```ts
+{
+  id: number
+  username: string
+  isAdmin: boolean
+}
+```
+
+### 3.4 漫畫目錄項目（`PATCH /manga/{id}` 回傳）
+
+```ts
+{
+  id: number
+  title: string
+  category: MangaCategory
+  createdAt: string
+  updatedAt: string
+}
+```
+
+### 3.5 列舉值
 
 `ReadingStatus`：`plan_to_read` / `reading` / `dropped` / `completed`
 `MangaCategory`：`hot_blooded` / `mystery` / `adventure` / `romance` / `casual` / `competition` / `revenge` / `slice_of_life` / `other`
@@ -112,7 +138,9 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 |---|---|---|---|---|
 | `POST` | `/auth/register` | 建立帳號 | ❌ | `201 Created` + `{id, username}` |
 | `POST` | `/auth/login` | 帳密換 JWT | ❌ | `200 OK` + `{token}` |
+| `GET` | `/auth/me` | 目前登入者資訊（含 `isAdmin`） | ✅ | `200 OK` + §3.3 |
 | `GET` | `/manga/search?q=` | 模糊查詢漫畫目錄 | ✅ | `200 OK` + `MangaSearchResult[]` |
+| `PATCH` | `/manga/{id}` | 編輯漫畫目錄（**僅 admin**） | ✅ admin | `200 OK` + §3.4 |
 | `GET` | `/collections` | 列出目前使用者的收藏 | ✅ | `200 OK` + `CollectionItem[]` |
 | `POST` | `/collections` | 新增收藏 | ✅ | `201 Created` + `CollectionItem` |
 | `PATCH` | `/collections/{id}` | 更新收藏（狀態/進度/評分） | ✅ | `200 OK` + `CollectionItem` |
@@ -185,7 +213,24 @@ JWT 規格：
 
 ---
 
-## 7. `GET /manga/search?q=`
+## 7. `GET /auth/me`
+
+```http
+GET /auth/me HTTP/1.1
+Authorization: Bearer <jwt>
+```
+
+回傳目前登入者的帳號資訊（見 §3.3），前端用 `isAdmin` 決定要不要顯示「管理目錄」入口——後端 `PATCH /manga/{id}` 本身也會再檢查一次 `is_admin`，前端隱藏入口只是 UX，不是唯一的權限防線。
+
+### 錯誤
+
+| Status | code | 情境 |
+|---|---|---|
+| 401 | `UNAUTHORIZED` | 未帶/無效 token |
+
+---
+
+## 8. `GET /manga/search?q=`
 
 ### Request
 
@@ -210,7 +255,7 @@ Authorization: Bearer <jwt>
 
 ---
 
-## 8. `GET /collections`
+## 9. `GET /collections`
 
 ```http
 GET /collections HTTP/1.1
@@ -221,7 +266,7 @@ Authorization: Bearer <jwt>
 
 ---
 
-## 9. `POST /collections`
+## 10. `POST /collections`
 
 ### Request
 
@@ -261,6 +306,8 @@ Authorization: Bearer <jwt>
 
 > `ON CONFLICT ... RETURNING id` 這種寫法一次 SQL 呼叫就處理完「有就用、沒有就建」，不需要自己在 service 層寫「先 SELECT、沒有再 INSERT、撞 unique 再 catch 例外」的邏輯，也天生不怕並發 race condition（DB 自己保證原子性）。這同時解決了：模糊查詢選到既有候選（字串經正規化後精確對應到同一筆）、新增全新漫畫、以及前面討論過的「新增流程中途失敗、前端重試」三種情境，全部走同一條路徑。
 
+新增的 `title` 存入前會經過繁簡轉換，一律存繁體（見 `DATA_MODEL.md` `manga`），不管使用者輸入繁體或簡體。
+
 ### 驗證規則
 
 - `mangaName`：1–200 字元，trim 過（同 `manga.title` 規則），必填
@@ -282,7 +329,7 @@ Authorization: Bearer <jwt>
 
 ---
 
-## 10. `PATCH /collections/{id}` / `DELETE /collections/{id}`
+## 11. `PATCH /collections/{id}` / `DELETE /collections/{id}`
 
 `PATCH`：body 可帶 `status` / `currentVolume` / `currentChapter` / `rating` 任意子集，partial update。動到 `currentVolume`/`currentChapter` 時 `lastReadAt` 自動刷新。`mangaName`/`category` 不可透過此 endpoint 修改（漫畫本身的屬性不因為個人收藏異動；要換這筆收藏對應的漫畫，語意上應該是刪除重建，不是 PATCH）。
 
@@ -299,7 +346,44 @@ Authorization: Bearer <jwt>
 
 ---
 
-## 11. 驗證規則總表
+## 12. `PATCH /manga/{id}`（admin only）
+
+### Request
+
+```http
+PATCH /manga/42 HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <jwt>
+
+{ "title": "進擊的巨人", "category": "adventure" }
+```
+
+`title`、`category` 都選填，只更新 body 出現的 key。改 `title` 時後端會用新標題重新計算 `normalized_title`（同樣先轉繁體，見 §10），並檢查有沒有撞到其他 manga 的 `normalized_title`。
+
+跟 `PATCH /collections/{id}` 不同：這裡改的是全站共用的 `manga` 目錄本身，不是某個人的收藏，所有收藏這部漫畫的使用者都會看到新標題/分類。
+
+### 驗證規則
+
+- `title`：1–200 字元，trim 過，選填
+- `category`：enum 九選一，選填
+
+### Response 200
+
+回傳完整的漫畫目錄項目（見 §3.4）。
+
+### 錯誤
+
+| Status | code | 情境 |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | 欄位驗證失敗 |
+| 401 | `UNAUTHORIZED` | 未帶/無效 token |
+| 403 | `FORBIDDEN` | 目前登入的帳號不是 admin |
+| 404 | `NOT_FOUND` | manga id 不存在 |
+| 409 | `DUPLICATE_TITLE` | 改完的標題（正規化後）跟另一部既有 manga 撞了 |
+
+---
+
+## 13. 驗證規則總表
 
 | 欄位 | 規則 |
 |---|---|
@@ -313,15 +397,16 @@ Authorization: Bearer <jwt>
 
 ---
 
-## 12. 錯誤碼總表
+## 14. 錯誤碼總表
 
 | code | Status | 說明 |
 |---|---|---|
 | `VALIDATION_ERROR` | 400 | 欄位驗證失敗 |
 | `MALFORMED_JSON` | 400 | body 不是合法 JSON |
 | `UNAUTHORIZED` | 401 | 未認證/認證失敗 |
-| `FORBIDDEN` | 403 | 認證成功但無權限操作該資源 |
+| `FORBIDDEN` | 403 | 認證成功但無權限操作該資源（含非 admin 呼叫 `PATCH /manga/{id}`） |
 | `USERNAME_TAKEN` | 409 | 註冊時 username 已存在 |
 | `ALREADY_IN_COLLECTION` | 409 | 重複收藏同一部漫畫 |
+| `DUPLICATE_TITLE` | 409 | `PATCH /manga/{id}` 改完的標題跟另一部既有 manga 撞了 |
 | `NOT_FOUND` | 404 | 資源不存在 |
 | `INTERNAL_ERROR` | 500 | 未預期錯誤 |
