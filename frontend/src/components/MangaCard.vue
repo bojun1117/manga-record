@@ -52,7 +52,7 @@ async function confirmDelete() {
 
 <template>
   <div
-    class="group relative rounded-lg border border-neutral-200 bg-white px-5 py-4 transition-opacity"
+    class="group relative flex flex-col rounded-lg border border-neutral-200 bg-white px-5 py-4 transition-opacity"
     :class="{ 'opacity-75 hover:opacity-100': isDropped }"
   >
     <div class="mb-3 flex items-start justify-between gap-2">
@@ -93,7 +93,7 @@ async function confirmDelete() {
       </div>
     </template>
 
-    <div class="border-t border-neutral-200 pt-2.5">
+    <div class="mt-auto border-t border-neutral-200 pt-2.5">
       <span class="text-xs text-neutral-500">{{ relativeTime }}</span>
     </div>
 
