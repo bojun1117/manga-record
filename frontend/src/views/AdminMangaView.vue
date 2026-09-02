@@ -54,7 +54,7 @@ async function loadPage(nextPage: number) {
   if (!token) return
   loading.value = true
   try {
-    const res = await listMangaApi(nextPage, token)
+    const res = await listMangaApi(nextPage, PAGE_SIZE, token)
     results.value = res.items
     page.value = res.page
     total.value = res.total

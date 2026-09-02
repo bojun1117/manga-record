@@ -22,6 +22,7 @@ export interface ListCollectionsParams {
   category?: MangaCategory
   q?: string
   page: number
+  pageSize: number
 }
 
 export interface CollectionListResult {
@@ -48,6 +49,7 @@ export function listCollectionsApi(
   if (params.category) usp.set('category', params.category)
   if (params.q) usp.set('q', params.q)
   usp.set('page', String(params.page))
+  usp.set('pageSize', String(params.pageSize))
   return apiRequest<CollectionListResult>(`/collections?${usp.toString()}`, { token })
 }
 

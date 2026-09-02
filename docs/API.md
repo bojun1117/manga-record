@@ -140,12 +140,10 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 {
   items: T[]
   page: number       // 從 1 起算，對應 request 帶的 page（未帶則預設 1）
-  pageSize: number    // 固定值，`GET /collections` 是 30，`GET /manga` 是 20
+  pageSize: number    // 對應 request 帶的 pageSize（未帶則預設 20，上限 100）
   total: number        // 符合目前篩選條件的總筆數（不是 items.length）
 }
 ```
-
-前端用 `Math.ceil(total / pageSize)` 算總頁數；`page * pageSize >= total` 代表已經是最後一頁。
 
 ### 3.7 收藏統計（`GET /collections/stats` 回傳）
 
@@ -303,7 +301,7 @@ Authorization: Bearer <jwt>
 ### Request
 
 ```http
-GET /collections?status=reading&status=dropped&status=completed&category=hot_blooded&q=進擊&page=1 HTTP/1.1
+GET /collections?status=reading&status=dropped&status=completed&category=hot_blooded&q=進擊&page=1&pageSize=20 HTTP/1.1
 Authorization: Bearer <jwt>
 ```
 
@@ -311,6 +309,7 @@ Authorization: Bearer <jwt>
 - `category`：選填，單一 `MangaCategory`；不帶 = 不篩選分類
 - `q`：選填，比照 `GET /manga/search` 的繁簡正規化模糊比對，對象是這個使用者收藏的 `manga.title`
 - `page`：選填，預設 1
+- `pageSize`：選填，預設 20，上限 100——由前端決定要拿幾筆，後端不寫死
 
 首頁「待看清單」是獨立區塊，前端對它另外呼叫一次 `GET /collections?status=plan_to_read&...`（`category`/`q` 沿用同一組篩選，只有 `status` 固定成 `plan_to_read`），不是同一份分頁結果裡再切一次。
 
@@ -414,15 +413,18 @@ Authorization: Bearer <jwt>
 ## 13. `GET /manga`（admin only）
 
 ```http
-GET /manga?page=1 HTTP/1.1
+GET /manga?page=1&pageSize=20 HTTP/1.1
 Authorization: Bearer <jwt>
 ```
 
 分頁列出全站漫畫目錄，依 `created_at` desc 排序（最新建立的在最前面）。給 admin 管理頁面「一開始先瀏覽」用；輸入關鍵字之後管理頁面改叫 §8 的 `GET /manga/search`（不分頁、依標題排序），兩個 endpoint 分工不同，不是同一個查詢加減參數而已。
 
+- `page`：選填，預設 1
+- `pageSize`：選填，預設 20，上限 100
+
 ### Response 200
 
-回傳 §3.6，`items` 是 `MangaSearchResult[]`，`pageSize` 固定 20。
+回傳 §3.6，`items` 是 `MangaSearchResult[]`。
 
 ### 錯誤
 
@@ -516,6 +518,7 @@ Authorization: Bearer <jwt>
 | `currentVolume` / `currentChapter` | 整數 0–9999 或 `null` |
 | `rating` | 整數 1–5 或 `null`，任何 status 都允許 |
 | `page` | 整數，≥ 1，未帶預設 1 |
+| `pageSize` | 整數，1–100，未帶預設 20 |
 | `question` | trim 後 1–500 字元 |
 
 ---

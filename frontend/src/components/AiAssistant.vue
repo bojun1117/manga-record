@@ -88,18 +88,21 @@ function onCardChanged() {
       </button>
     </div>
 
-    <p v-if="errorMsg" class="mt-3 text-sm text-red-600">{{ errorMsg }}</p>
+    <div class="mt-4 min-h-[120px] rounded-lg border border-dashed border-neutral-200 bg-neutral-50 px-4 py-4">
+      <p v-if="asking" class="text-sm text-neutral-400">思考中…</p>
+      <p v-else-if="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</p>
+      <template v-else-if="answer">
+        <p class="text-sm text-neutral-700">💬 {{ answer }}</p>
 
-    <div v-if="answer" class="mt-4">
-      <p class="text-sm text-neutral-700">💬 {{ answer }}</p>
-
-      <div
-        v-if="items.length > 0"
-        class="mt-3 grid gap-3"
-        style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))"
-      >
-        <MangaCard v-for="item in items" :key="item.id" :item="item" @changed="onCardChanged" />
-      </div>
+        <div
+          v-if="items.length > 0"
+          class="mt-3 grid gap-3"
+          style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))"
+        >
+          <MangaCard v-for="item in items" :key="item.id" :item="item" @changed="onCardChanged" />
+        </div>
+      </template>
+      <p v-else class="text-sm text-neutral-400">問點什麼，答案會顯示在這裡。</p>
     </div>
   </section>
 </template>

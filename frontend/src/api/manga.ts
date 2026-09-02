@@ -18,8 +18,12 @@ export function searchMangaApi(query: string, token: string): Promise<MangaSearc
   return apiRequest<MangaSearchResult[]>(`/manga/search?q=${q}`, { token })
 }
 
-export function listMangaApi(page: number, token: string): Promise<MangaListResult> {
-  return apiRequest<MangaListResult>(`/manga?page=${page}`, { token })
+export function listMangaApi(
+  page: number,
+  pageSize: number,
+  token: string,
+): Promise<MangaListResult> {
+  return apiRequest<MangaListResult>(`/manga?page=${page}&pageSize=${pageSize}`, { token })
 }
 
 export function updateMangaApi(

@@ -16,8 +16,6 @@ from app.service import collection_service
 
 router = APIRouter(prefix="/collections", tags=["collections"])
 
-PAGE_SIZE = 30
-
 
 @router.get("", response_model=CollectionListResponse)
 def list_collections(
@@ -25,16 +23,17 @@ def list_collections(
     category: MangaCategory | None = Query(default=None),
     q: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100, alias="pageSize"),
     member_id: int = Depends(require_auth),
     db: Session = Depends(get_db),
 ) -> CollectionListResponse:
     rows, total = collection_service.list_collections_page(
-        db, member_id, status, category, q, page, PAGE_SIZE
+        db, member_id, status, category, q, page, page_size
     )
     return CollectionListResponse(
         items=[build_collection_item_response(entry, manga) for entry, manga in rows],
         page=page,
-        page_size=PAGE_SIZE,
+        page_size=page_size,
         total=total,
     )
 

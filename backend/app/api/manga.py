@@ -13,20 +13,19 @@ from app.service import collection_service
 
 router = APIRouter(prefix="/manga", tags=["manga"])
 
-PAGE_SIZE = 20
-
 
 @router.get("", response_model=MangaListResponse)
 def list_manga(
     page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100, alias="pageSize"),
     _admin_id: int = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> MangaListResponse:
-    items, total = collection_service.list_manga(db, page, PAGE_SIZE)
+    items, total = collection_service.list_manga(db, page, page_size)
     return MangaListResponse(
         items=[MangaSearchResult(id=m.id, title=m.title, category=m.category) for m in items],
         page=page,
-        page_size=PAGE_SIZE,
+        page_size=page_size,
         total=total,
     )
 

@@ -13,7 +13,7 @@ import AppToast from '@/components/AppToast.vue'
 import AiAssistant from '@/components/AiAssistant.vue'
 import { STATUS_OPTIONS, CATEGORY_OPTIONS } from '@/constants/manga'
 
-const PAGE_SIZE = 30
+const PAGE_SIZE = 20
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -99,6 +99,7 @@ async function loadMain() {
         category: activeCategory.value === 'all' ? undefined : activeCategory.value,
         q: searchQuery.value.trim() || undefined,
         page: mainPage.value,
+        pageSize: PAGE_SIZE,
       },
       token,
     )
@@ -123,6 +124,7 @@ async function loadPlanToRead() {
         category: activeCategory.value === 'all' ? undefined : activeCategory.value,
         q: searchQuery.value.trim() || undefined,
         page: planPage.value,
+        pageSize: PAGE_SIZE,
       },
       token,
     )
@@ -204,7 +206,7 @@ function logout() {
 </script>
 
 <template>
-  <main class="mx-auto max-w-6xl px-4 py-8">
+  <main class="mx-auto max-w-6xl px-4 pt-8 pb-20">
     <div class="mb-6 flex items-center justify-between gap-4">
       <div>
         <h1 class="m-0 text-2xl font-semibold text-neutral-900">我的漫畫</h1>
