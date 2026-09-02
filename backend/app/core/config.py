@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     environment: str = "dev"
     jwt_secret: str
     jwt_ttl_seconds: int = 60 * 60 * 24 * 30
+    anthropic_api_key: str | None = None
 
 
 @lru_cache

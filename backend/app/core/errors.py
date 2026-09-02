@@ -44,3 +44,8 @@ class AlreadyInCollectionError(AppError):
 class DuplicateTitleError(AppError):
     status_code = 409
     code = "DUPLICATE_TITLE"
+
+
+class AssistantUnavailableError(AppError):
+    status_code = 502
+    code = "ASSISTANT_UNAVAILABLE"

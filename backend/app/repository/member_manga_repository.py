@@ -68,6 +68,50 @@ def count_by_status(db: Session, member_id: int) -> dict[ReadingStatus, int]:
     return dict(db.execute(stmt).all())
 
 
+_SORT_COLUMNS = {
+    "rating": MemberManga.rating,
+    "last_read_at": MemberManga.last_read_at,
+    "current_chapter": MemberManga.current_chapter,
+    "created_at": MemberManga.created_at,
+}
+
+
+def list_for_assistant(
+    db: Session,
+    member_id: int,
+    statuses: list[ReadingStatus] | None,
+    categories: list[MangaCategory] | None,
+    min_rating: int | None,
+    max_rating: int | None,
+    sort_by: str,
+    sort_order: str,
+    limit: int,
+) -> list[tuple[MemberManga, Manga]]:
+    conditions = [MemberManga.member_id == member_id]
+    if statuses is not None:
+        conditions.append(MemberManga.status.in_(statuses))
+    if categories is not None:
+        conditions.append(Manga.category.in_(categories))
+    if min_rating is not None:
+        conditions.append(MemberManga.rating >= min_rating)
+    if max_rating is not None:
+        conditions.append(MemberManga.rating <= max_rating)
+
+    column = _SORT_COLUMNS[sort_by]
+    order = column.desc() if sort_order == "desc" else column.asc()
+    if sort_by in ("rating", "current_chapter"):
+        order = order.nulls_last()
+
+    stmt = (
+        select(MemberManga, Manga)
+        .join(Manga, MemberManga.manga_id == Manga.id)
+        .where(*conditions)
+        .order_by(order)
+        .limit(limit)
+    )
+    return list(db.execute(stmt).all())
+
+
 def get_with_manga(db: Session, entry_id: int) -> tuple[MemberManga, Manga] | None:
     stmt = (
         select(MemberManga, Manga)

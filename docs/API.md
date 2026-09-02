@@ -15,8 +15,9 @@ REST API 規格。詳細資料模型定義見 `DATA_MODEL.md`。
 - §8：`GET /manga/search`
 - §9–§12：`/collections` 系列 endpoint
 - §13–§14：`GET /manga`、`PATCH /manga/{id}`（admin only）
-- §15：驗證規則總表
-- §16：錯誤碼總表
+- §15：`POST /assistant/query`
+- §16：驗證規則總表
+- §17：錯誤碼總表
 
 ---
 
@@ -160,6 +161,15 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 
 不受 `GET /collections` 的 `status`/`category`/`q` 篩選影響，永遠是目前使用者的全站總覽數字。
 
+### 3.8 AI 助理回應（`POST /assistant/query` 回傳）
+
+```ts
+{
+  answer: string            // AI 對問題的理解摘要，直接顯示在回答框開頭
+  items: CollectionItem[]   // 符合條件的收藏，最多 50 筆；問題跟收藏無關時是空陣列
+}
+```
+
 ---
 
 ## 4. Endpoint 一覽
@@ -177,6 +187,7 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 | `POST` | `/collections` | 新增收藏 | ✅ | `201 Created` + `CollectionItem` |
 | `PATCH` | `/collections/{id}` | 更新收藏（狀態/進度/評分） | ✅ | `200 OK` + `CollectionItem` |
 | `DELETE` | `/collections/{id}` | 移除收藏 | ✅ | `204 No Content` |
+| `POST` | `/assistant/query` | 自然語言查詢自己的收藏 | ✅ | `200 OK` + §3.8 |
 
 ---
 
@@ -459,7 +470,41 @@ Authorization: Bearer <jwt>
 
 ---
 
-## 15. 驗證規則總表
+## 15. `POST /assistant/query`
+
+### Request
+
+```http
+POST /assistant/query HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <jwt>
+
+{ "question": "我評分最高的 10 部漫畫" }
+```
+
+後端把 `question` 送給 Claude Haiku，請它轉成一組結構化查詢條件（狀態/分類/評分範圍/排序/筆數上限），**不會**讓 AI 直接生 SQL 或碰資料庫——查詢條件驗證過後，套用一般的 SQLAlchemy 查詢，範圍固定是目前登入者自己的收藏，AI 拿不到、也查不到其他使用者的資料。
+
+問題跟使用者的漫畫收藏無關時（閒聊、問別人的收藏），`items` 回空陣列，`answer` 說明沒辦法回答。
+
+### 驗證規則
+
+- `question`：1–500 字元
+
+### Response 200
+
+回傳 §3.8。
+
+### 錯誤
+
+| Status | code | 情境 |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | `question` 空白或超過 500 字元 |
+| 401 | `UNAUTHORIZED` | 未帶/無效 token |
+| 502 | `ASSISTANT_UNAVAILABLE` | Anthropic API 沒設定、逾時、或回傳無法解析的結果 |
+
+---
+
+## 16. 驗證規則總表
 
 | 欄位 | 規則 |
 |---|---|
@@ -471,10 +516,11 @@ Authorization: Bearer <jwt>
 | `currentVolume` / `currentChapter` | 整數 0–9999 或 `null` |
 | `rating` | 整數 1–5 或 `null`，任何 status 都允許 |
 | `page` | 整數，≥ 1，未帶預設 1 |
+| `question` | trim 後 1–500 字元 |
 
 ---
 
-## 16. 錯誤碼總表
+## 17. 錯誤碼總表
 
 | code | Status | 說明 |
 |---|---|---|
@@ -486,4 +532,5 @@ Authorization: Bearer <jwt>
 | `ALREADY_IN_COLLECTION` | 409 | 重複收藏同一部漫畫 |
 | `DUPLICATE_TITLE` | 409 | `PATCH /manga/{id}` 改完的標題跟另一部既有 manga 撞了 |
 | `NOT_FOUND` | 404 | 資源不存在 |
+| `ASSISTANT_UNAVAILABLE` | 502 | AI 助理暫時無法回應（未設定/逾時/回應無法解析） |
 | `INTERNAL_ERROR` | 500 | 未預期錯誤 |

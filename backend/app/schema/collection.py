@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import Field, field_validator
 
-from app.model import MangaCategory, ReadingStatus
+from app.model import Manga, MangaCategory, MemberManga, ReadingStatus
 from app.schema.base import CamelModel
 
 
@@ -42,6 +42,22 @@ class CollectionItemResponse(CamelModel):
     last_read_at: datetime
     created_at: datetime
     updated_at: datetime
+
+
+def build_collection_item_response(entry: MemberManga, manga: Manga) -> CollectionItemResponse:
+    return CollectionItemResponse(
+        id=entry.id,
+        manga_id=manga.id,
+        title=manga.title,
+        category=manga.category,
+        status=entry.status,
+        current_volume=entry.current_volume,
+        current_chapter=entry.current_chapter,
+        rating=entry.rating,
+        last_read_at=entry.last_read_at,
+        created_at=entry.created_at,
+        updated_at=entry.updated_at,
+    )
 
 
 class CollectionListResponse(CamelModel):

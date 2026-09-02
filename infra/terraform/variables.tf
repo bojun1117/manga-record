@@ -100,3 +100,9 @@ variable "github_repo" {
   type        = string
   default     = "bojun1117/manga-record"
 }
+
+variable "anthropic_api_key" {
+  description = "Anthropic API key，AI 助理功能用，存進 Secrets Manager；在 terraform.tfvars 填入真的值，不進版控"
+  type        = string
+  sensitive   = true
+}

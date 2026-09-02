@@ -26,6 +26,7 @@ ECR_REPO="${ecr_repo_url}"
 ECR_REGISTRY="$${ECR_REPO%%/*}"
 DB_SECRET_ID="${db_secret_id}"
 JWT_SECRET_ID="${jwt_secret_id}"
+ANTHROPIC_SECRET_ID="${anthropic_secret_id}"
 APP_PORT="${app_port}"
 CONTAINER_NAME="manga-record-backend"
 
@@ -40,6 +41,7 @@ DB_NAME=$(echo "$DB_JSON" | jq -r .dbname)
 DATABASE_URL="postgresql+psycopg://$${DB_USER}:$${DB_PASS}@$${DB_HOST}:$${DB_PORT}/$${DB_NAME}?sslmode=require"
 
 JWT_SECRET=$(aws secretsmanager get-secret-value --region "$REGION" --secret-id "$JWT_SECRET_ID" --query SecretString --output text)
+ANTHROPIC_API_KEY=$(aws secretsmanager get-secret-value --region "$REGION" --secret-id "$ANTHROPIC_SECRET_ID" --query SecretString --output text)
 
 docker pull "$${ECR_REPO}:latest"
 
@@ -56,6 +58,7 @@ docker run -d --name "$CONTAINER_NAME" --restart unless-stopped \
   -p "$${APP_PORT}:8000" \
   --env DATABASE_URL="$DATABASE_URL" \
   --env JWT_SECRET="$JWT_SECRET" \
+  --env ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
   --env ENVIRONMENT=prod \
   "$${ECR_REPO}:latest"
 

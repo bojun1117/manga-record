@@ -14,7 +14,7 @@ Root module（`main.tf`）只負責接線，實際資源分在 7 個 child modul
 
 - `modules/network`：VPC、subnet、route table，以及 `aws_security_group.ec2`（對外開 `var.app_port`，預設 `8000`）、`aws_security_group.rds`（只信任 ec2 的 SG）
 - `modules/database`：RDS Postgres instance，`aws_db_subnet_group.main` 放在 private subnet
-- `modules/secrets`：Secrets Manager（DB 連線字串、JWT secret）
+- `modules/secrets`：Secrets Manager（DB 連線字串、JWT secret、Anthropic API key——後兩個都需要外部輸入，`var.anthropic_api_key` 沒有預設值，必須在 `terraform.tfvars` 填入才能 `apply`）
 - `modules/ecr`：後端 Docker image 的 ECR repo（`aws_ecr_repository.backend`），附一個清掉沒 tag 舊 image 的生命週期規則
 - `modules/backend`：EC2 的 IAM role（`AmazonSSMManagedInstanceCore`、`AmazonEC2ContainerRegistryReadOnly`、自訂的 `secretsmanager:GetSecretValue`，只給兩個 secret 的 ARN）+ 一台 EC2（Amazon Linux 2023）+ 固定 Elastic IP。開機時透過 `modules/backend/templates/user_data.sh.tpl` 裝好 docker/aws-cli/jq，並把 `/opt/manga-record/deploy.sh` 寫到機器上（換新版 image 時要重跑的腳本）
 - `modules/cicd`：GitHub Actions 用的 OIDC provider + IAM role，權限鎖在「push 到 ECR 的 backend repo」+「對 backend 那台 EC2 送 SSM SendCommand」兩件事，信任範圍只限 `var.github_repo`（預設 `bojun1117/manga-record`）的 `main` 分支。設定步驟見 [`backend/README.md` 的 CI/CD 段落](../../backend/README.md)
@@ -76,7 +76,11 @@ aws configure --profile terraform-deploy
 Copy-Item terraform.tfvars.example terraform.tfvars
 ```
 
-這個檔案已被 `.gitignore` 排除，不會被 commit。所有變數都有預設值，`my_ip_cidr` 平常留空（註解掉）即可，只有要臨時 `psql` 直連除錯時才需要填（見上方「手動 psql 直連 RDS 除錯」）。
+這個檔案已被 `.gitignore` 排除，不會被 commit。大部分變數都有預設值，`my_ip_cidr` 平常留空（註解掉）即可，只有要臨時 `psql` 直連除錯時才需要填（見上方「手動 psql 直連 RDS 除錯」）。**`anthropic_api_key` 沒有預設值，一定要填**（去 [console.anthropic.com](https://console.anthropic.com/) 拿一組 key）：
+
+```hcl
+anthropic_api_key = "sk-ant-..."
+```
 
 ## 執行
 

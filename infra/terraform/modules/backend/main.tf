@@ -29,6 +29,7 @@ data "aws_iam_policy_document" "ec2_secrets_read" {
     resources = [
       var.db_secret_arn,
       var.jwt_secret_arn,
+      var.anthropic_secret_arn,
     ]
   }
 }
@@ -73,11 +74,12 @@ resource "aws_instance" "backend" {
   key_name               = aws_key_pair.backend.key_name
 
   user_data = templatefile("${path.module}/templates/user_data.sh.tpl", {
-    region        = var.aws_region
-    ecr_repo_url  = var.ecr_repository_url
-    db_secret_id  = var.db_secret_id
-    jwt_secret_id = var.jwt_secret_id
-    app_port      = var.app_port
+    region              = var.aws_region
+    ecr_repo_url        = var.ecr_repository_url
+    db_secret_id        = var.db_secret_id
+    jwt_secret_id       = var.jwt_secret_id
+    anthropic_secret_id = var.anthropic_secret_id
+    app_port            = var.app_port
   })
 
   root_block_device {

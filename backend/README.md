@@ -27,6 +27,7 @@ Copy-Item .env.example .env
   DATABASE_URL=postgresql+psycopg://manga_record_admin:<密碼>@<host>:5432/manga_record?sslmode=require
   ```
 - `JWT_SECRET`：`python -c "import secrets; print(secrets.token_urlsafe(48))"` 產生一組貼進去
+- `ANTHROPIC_API_KEY`：AI 助理功能用，去 [console.anthropic.com](https://console.anthropic.com/) 拿一組 key 貼進去；沒設的話 `POST /assistant/query` 會回 502 `ASSISTANT_UNAVAILABLE`，其他功能不受影響
 
 ### 3. 跑 migration
 
@@ -83,7 +84,7 @@ sudo /opt/manga-record/deploy.sh
 tail -f /var/log/manga-record-deploy.log
 ```
 
-腳本會自動：登入 ECR → 從 Secrets Manager 撈 `DATABASE_URL`/`JWT_SECRET` → pull 最新 image
+腳本會自動：登入 ECR → 從 Secrets Manager 撈 `DATABASE_URL`/`JWT_SECRET`/`ANTHROPIC_API_KEY` → pull 最新 image
 → 跑一次 `alembic upgrade head` → 換掉正在跑的 container。
 
 ### 3. 驗收

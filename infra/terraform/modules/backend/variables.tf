@@ -45,3 +45,11 @@ variable "jwt_secret_id" {
 variable "jwt_secret_arn" {
   type = string
 }
+
+variable "anthropic_secret_id" {
+  type = string
+}
+
+variable "anthropic_secret_arn" {
+  type = string
+}

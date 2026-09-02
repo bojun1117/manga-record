@@ -10,6 +10,7 @@ import { ApiException } from '@/api/client'
 import MangaCard from '@/components/MangaCard.vue'
 import AddMangaModal from '@/components/AddMangaModal.vue'
 import AppToast from '@/components/AppToast.vue'
+import AiAssistant from '@/components/AiAssistant.vue'
 import { STATUS_OPTIONS, CATEGORY_OPTIONS } from '@/constants/manga'
 
 const PAGE_SIZE = 30
@@ -390,6 +391,8 @@ function logout() {
           </button>
         </div>
       </section>
+
+      <AiAssistant @changed="onCardChanged" />
     </template>
 
     <AddMangaModal :open="addModalOpen" @close="addModalOpen = false" @added="onAdded" />

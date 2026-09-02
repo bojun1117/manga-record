@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.api.assistant import router as assistant_router
 from app.api.auth import router as auth_router
 from app.api.collections import router as collections_router
 from app.api.manga import router as manga_router
@@ -24,6 +25,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(manga_router)
 app.include_router(collections_router)
+app.include_router(assistant_router)
 
 
 @app.exception_handler(AppError)
