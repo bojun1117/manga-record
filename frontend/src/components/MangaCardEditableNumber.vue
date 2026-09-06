@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { parseNonNegativeInt } from '@/utils/number'
 
 const props = defineProps<{
@@ -16,6 +16,28 @@ const inputRef = ref<HTMLInputElement | null>(null)
 const draft = ref<string | number>('')
 const optimisticValue = ref<number | null>(null)
 const useOptimistic = ref(false)
+let optimisticTimer: number | null = null
+
+function clearOptimisticTimer() {
+  if (optimisticTimer !== null) {
+    window.clearTimeout(optimisticTimer)
+    optimisticTimer = null
+  }
+}
+
+// Drop the optimistic value once the real (server-confirmed) value catches up,
+// instead of clearing it after a single tick — the update + list refresh can
+// easily take longer than that, which was causing the UI to flash back to the
+// old number and stay there until a manual page refresh.
+watch(
+  () => props.value,
+  (v) => {
+    if (useOptimistic.value && v === optimisticValue.value) {
+      useOptimistic.value = false
+      clearOptimisticTimer()
+    }
+  },
+)
 
 function displayValue(): number | null {
   return useOptimistic.value ? optimisticValue.value : props.value
@@ -34,7 +56,7 @@ function cancel() {
   draft.value = ''
 }
 
-async function commit() {
+function commit() {
   if (!editing.value) return
 
   const next = parseNonNegativeInt(draft.value)
@@ -52,15 +74,14 @@ async function commit() {
   useOptimistic.value = true
   editing.value = false
 
-  try {
-    emit('update', next)
-  } catch {
+  emit('update', next)
+
+  // Safety net: if the update never comes back (e.g. it failed), fall back to
+  // showing the real value instead of the optimistic one forever.
+  clearOptimisticTimer()
+  optimisticTimer = window.setTimeout(() => {
     useOptimistic.value = false
-  } finally {
-    nextTick(() => {
-      useOptimistic.value = false
-    })
-  }
+  }, 8000)
 }
 
 function onKeydown(e: KeyboardEvent) {

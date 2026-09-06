@@ -30,14 +30,17 @@ const confirmDeleteOpen = ref(false)
 
 async function updateVolume(next: number | null) {
   await store.update(props.item.id, { currentVolume: next })
+  emit('changed')
 }
 
 async function updateChapter(next: number | null) {
   await store.update(props.item.id, { currentChapter: next })
+  emit('changed')
 }
 
 async function updateRating(next: number | null) {
   await store.update(props.item.id, { rating: next })
+  emit('changed')
 }
 
 async function changeStatus(next: ReadingStatus) {
