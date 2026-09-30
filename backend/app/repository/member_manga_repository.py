@@ -130,6 +130,24 @@ def list_for_assistant(
     return list(db.execute(stmt).all())
 
 
+def count_for_assistant(
+    db: Session,
+    member_id: int,
+    statuses: list[ReadingStatus] | None,
+    categories: list[MangaCategory] | None,
+    min_rating: int | None,
+    max_rating: int | None,
+) -> int:
+    conditions = _assistant_conditions(member_id, statuses, categories, min_rating, max_rating)
+    stmt = (
+        select(func.count())
+        .select_from(MemberManga)
+        .join(Manga, MemberManga.manga_id == Manga.id)
+        .where(*conditions)
+    )
+    return db.scalar(stmt) or 0
+
+
 def stats_for_assistant(
     db: Session,
     member_id: int,

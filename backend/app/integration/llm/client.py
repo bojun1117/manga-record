@@ -13,8 +13,10 @@ MAX_ROUNDS = 4
 SYSTEM_PROMPT = """你是 Manga Record 的收藏助理，回答使用者關於「自己的漫畫收藏」的問題。
 
 你看不到收藏內容，一定要先用工具查資料，再根據查到的結果回答：
-- search_collection：列出符合條件的收藏（書名、分類、狀態、進度、評分）
+- search_collection：列出符合條件的收藏（書名、分類、狀態、進度、評分），最多回傳 limit 筆；total 是符合條件的總數
 - collection_stats：依分類 / 閱讀狀態 / 評分分組計數，附平均評分；「最多」「幾部」「平均」「比例」這類問題用它
+
+數量一律用 search_collection 的 total 或 collection_stats 的 count，不要自己數 items 的筆數；has_more 為 true 表示還有沒列出來的，回答時要說明只列出其中一部分
 
 欄位對照：
 - 閱讀狀態：plan_to_read(待看) / reading(追讀中) / dropped(棄坑) / completed(已追完)；「還沒看完」通常對應 [plan_to_read, reading]
@@ -31,7 +33,10 @@ SYSTEM_PROMPT = """你是 Manga Record 的收藏助理，回答使用者關於�
 TOOLS = [
     {
         "name": "search_collection",
-        "description": "列出目前使用者收藏中符合條件的漫畫，可排序與限制筆數。",
+        "description": (
+            "列出目前使用者收藏中符合條件的漫畫，可排序與限制筆數。"
+            "回傳 total（符合條件的總數）、returned（這次列出幾筆）、has_more（是否還有沒列出的）與 items。"
+        ),
         "input_schema": SearchCollectionArgs.model_json_schema(),
     },
     {

@@ -15,7 +15,10 @@ def answer_query(
     # 最後一次 search_collection 的結果會以卡片顯示在回答下方
     shown_rows: list[tuple[MemberManga, Manga]] = []
 
-    def search_collection(args: SearchCollectionArgs) -> list[dict]:
+    def search_collection(args: SearchCollectionArgs) -> dict:
+        total = member_manga_repository.count_for_assistant(
+            db, member_id, args.statuses, args.categories, args.min_rating, args.max_rating
+        )
         rows = member_manga_repository.list_for_assistant(
             db,
             member_id,
@@ -28,18 +31,23 @@ def answer_query(
             args.limit,
         )
         shown_rows[:] = rows
-        return [
-            {
-                "title": manga.title,
-                "category": manga.category.value,
-                "status": entry.status.value,
-                "current_volume": entry.current_volume,
-                "current_chapter": entry.current_chapter,
-                "rating": entry.rating,
-                "last_read_at": entry.last_read_at.isoformat(),
-            }
-            for entry, manga in rows
-        ]
+        return {
+            "total": total,
+            "returned": len(rows),
+            "has_more": total > len(rows),
+            "items": [
+                {
+                    "title": manga.title,
+                    "category": manga.category.value,
+                    "status": entry.status.value,
+                    "current_volume": entry.current_volume,
+                    "current_chapter": entry.current_chapter,
+                    "rating": entry.rating,
+                    "last_read_at": entry.last_read_at.isoformat(),
+                }
+                for entry, manga in rows
+            ],
+        }
 
     def collection_stats(args: CollectionStatsArgs) -> dict:
         groups = member_manga_repository.stats_for_assistant(
