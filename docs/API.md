@@ -163,8 +163,8 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 
 ```ts
 {
-  answer: string            // AI 對問題的理解摘要，直接顯示在回答框開頭
-  items: CollectionItem[]   // 符合條件的收藏，最多 50 筆；問題跟收藏無關時是空陣列
+  answer: string            // AI 根據查詢結果寫的回答（純文字，可能含換行）
+  items: CollectionItem[]   // AI 最後一次列出的收藏，最多 50 筆；統計類或跟收藏無關的問題是空陣列
 }
 ```
 
@@ -484,9 +484,16 @@ Authorization: Bearer <jwt>
 { "question": "我評分最高的 10 部漫畫" }
 ```
 
-後端把 `question` 送給 Claude Haiku，請它轉成一組結構化查詢條件（狀態/分類/評分範圍/排序/筆數上限），**不會**讓 AI 直接生 SQL 或碰資料庫——查詢條件驗證過後，套用一般的 SQLAlchemy 查詢，範圍固定是目前登入者自己的收藏，AI 拿不到、也查不到其他使用者的資料。
+後端用 tool use 跟 Claude Haiku 來回：Claude 先呼叫工具查資料，看過結果再寫回答（最多 4 輪，超過回 `ASSISTANT_UNAVAILABLE`）。
 
-問題跟使用者的漫畫收藏無關時（閒聊、問別人的收藏），`items` 回空陣列，`answer` 說明沒辦法回答。
+| 工具 | 用途 |
+|---|---|
+| `search_collection` | 依狀態/分類/評分範圍篩選，排序後列出收藏（最多 50 筆） |
+| `collection_stats` | 依 `category` / `status` / `rating` 分組，回傳每組數量與平均評分 |
+
+**不會**讓 AI 直接生 SQL 或碰資料庫——工具參數經 Pydantic 驗證後，套用一般的 SQLAlchemy 查詢；`member_id` 由後端帶入，不是工具參數，AI 拿不到、也查不到其他使用者的資料。
+
+問題跟使用者的漫畫收藏無關時（閒聊、問別人的收藏），AI 不呼叫工具，`items` 回空陣列，`answer` 說明沒辦法回答。
 
 ### 驗證規則
 
@@ -502,7 +509,7 @@ Authorization: Bearer <jwt>
 |---|---|---|
 | 400 | `VALIDATION_ERROR` | `question` 空白或超過 500 字元 |
 | 401 | `UNAUTHORIZED` | 未帶/無效 token |
-| 502 | `ASSISTANT_UNAVAILABLE` | Anthropic API 沒設定、逾時、或回傳無法解析的結果 |
+| 502 | `ASSISTANT_UNAVAILABLE` | Anthropic API 沒設定、逾時、回傳空白結果，或查詢超過 4 輪 |
 
 ---
 

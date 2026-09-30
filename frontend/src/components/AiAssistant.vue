@@ -92,7 +92,7 @@ function onCardChanged() {
       <p v-if="asking" class="text-sm text-neutral-400">思考中…</p>
       <p v-else-if="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</p>
       <template v-else-if="answer">
-        <p class="text-sm text-neutral-700">💬 {{ answer }}</p>
+        <p class="whitespace-pre-line text-sm text-neutral-700">💬 {{ answer }}</p>
 
         <div
           v-if="items.length > 0"

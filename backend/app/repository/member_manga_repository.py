@@ -76,6 +76,32 @@ _SORT_COLUMNS = {
 }
 
 
+_GROUP_COLUMNS = {
+    "category": Manga.category,
+    "status": MemberManga.status,
+    "rating": MemberManga.rating,
+}
+
+
+def _assistant_conditions(
+    member_id: int,
+    statuses: list[ReadingStatus] | None,
+    categories: list[MangaCategory] | None,
+    min_rating: int | None,
+    max_rating: int | None,
+):
+    conditions = [MemberManga.member_id == member_id]
+    if statuses is not None:
+        conditions.append(MemberManga.status.in_(statuses))
+    if categories is not None:
+        conditions.append(Manga.category.in_(categories))
+    if min_rating is not None:
+        conditions.append(MemberManga.rating >= min_rating)
+    if max_rating is not None:
+        conditions.append(MemberManga.rating <= max_rating)
+    return conditions
+
+
 def list_for_assistant(
     db: Session,
     member_id: int,
@@ -87,15 +113,7 @@ def list_for_assistant(
     sort_order: str,
     limit: int,
 ) -> list[tuple[MemberManga, Manga]]:
-    conditions = [MemberManga.member_id == member_id]
-    if statuses is not None:
-        conditions.append(MemberManga.status.in_(statuses))
-    if categories is not None:
-        conditions.append(Manga.category.in_(categories))
-    if min_rating is not None:
-        conditions.append(MemberManga.rating >= min_rating)
-    if max_rating is not None:
-        conditions.append(MemberManga.rating <= max_rating)
+    conditions = _assistant_conditions(member_id, statuses, categories, min_rating, max_rating)
 
     column = _SORT_COLUMNS[sort_by]
     order = column.desc() if sort_order == "desc" else column.asc()
@@ -110,6 +128,27 @@ def list_for_assistant(
         .limit(limit)
     )
     return list(db.execute(stmt).all())
+
+
+def stats_for_assistant(
+    db: Session,
+    member_id: int,
+    group_by: str,
+    statuses: list[ReadingStatus] | None,
+    categories: list[MangaCategory] | None,
+    min_rating: int | None,
+    max_rating: int | None,
+) -> list[tuple[object, int, float | None]]:
+    conditions = _assistant_conditions(member_id, statuses, categories, min_rating, max_rating)
+    column = _GROUP_COLUMNS[group_by]
+    stmt = (
+        select(column, func.count(), func.avg(MemberManga.rating))
+        .join(Manga, MemberManga.manga_id == Manga.id)
+        .where(*conditions)
+        .group_by(column)
+        .order_by(func.count().desc())
+    )
+    return [(value, count, float(avg) if avg is not None else None) for value, count, avg in db.execute(stmt).all()]
 
 
 def get_with_manga(db: Session, entry_id: int) -> tuple[MemberManga, Manga] | None:
