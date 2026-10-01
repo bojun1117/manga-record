@@ -95,15 +95,16 @@ async function confirmDelete() {
             />
           </div>
         </div>
-        <div v-if="isCompleted" class="flex items-center gap-2">
-          <span class="text-xs text-neutral-500">評分</span>
-          <MangaCardRating :rating="item.rating" @update="updateRating" />
-        </div>
       </div>
     </template>
 
-    <div v-if="!isCompleted" class="mt-auto border-t border-neutral-200 pt-2.5">
-      <span class="text-xs text-neutral-500">{{ relativeTime }}</span>
+    <!-- 底部固定高度：已追完顯示評分，其他狀態顯示最後觀看時間，卡片大小才會一致 -->
+    <div class="mt-auto flex h-8 items-end border-t border-neutral-200">
+      <div v-if="isCompleted" class="flex items-center gap-2">
+        <span class="text-xs text-neutral-500">評分</span>
+        <MangaCardRating :rating="item.rating" @update="updateRating" />
+      </div>
+      <span v-else class="text-xs text-neutral-500">{{ relativeTime }}</span>
     </div>
 
     <ConfirmDialog
