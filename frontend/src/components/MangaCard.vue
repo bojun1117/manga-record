@@ -102,7 +102,7 @@ async function confirmDelete() {
       </div>
     </template>
 
-    <div class="mt-auto border-t border-neutral-200 pt-2.5">
+    <div v-if="!isCompleted" class="mt-auto border-t border-neutral-200 pt-2.5">
       <span class="text-xs text-neutral-500">{{ relativeTime }}</span>
     </div>
 
