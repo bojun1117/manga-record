@@ -133,15 +133,3 @@ resource "aws_security_group_rule" "rds_debug" {
   cidr_blocks       = [var.my_ip_cidr]
   security_group_id = aws_security_group.rds.id
 }
-
-resource "aws_security_group_rule" "ec2_ssh_debug" {
-  count = var.my_ip_cidr != null ? 1 : 0
-
-  description       = "TEMPORARY SSH debug access from developer IP"
-  type              = "ingress"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = [var.my_ip_cidr]
-  security_group_id = aws_security_group.ec2.id
-}

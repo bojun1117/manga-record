@@ -108,11 +108,6 @@ resource "aws_iam_instance_profile" "ec2" {
   role = aws_iam_role.ec2.name
 }
 
-resource "aws_key_pair" "backend" {
-  key_name   = "${var.project_name}-${var.environment}-ec2-key"
-  public_key = file("${path.root}/ec2-ssh-key.pub")
-}
-
 data "aws_ami" "al2023" {
   most_recent = true
   owners      = ["amazon"]
@@ -134,7 +129,6 @@ resource "aws_instance" "backend" {
   subnet_id              = var.public_subnet_id
   vpc_security_group_ids = [var.security_group_id]
   iam_instance_profile   = aws_iam_instance_profile.ec2.name
-  key_name               = aws_key_pair.backend.key_name
 
   user_data = templatefile("${path.module}/templates/user_data.sh.tpl", {
     region              = var.aws_region
@@ -157,8 +151,10 @@ resource "aws_instance" "backend" {
 
   # al2023 data source 每次都抓最新 AMI；AWS 發新版時不要因此重建機器（會中斷服務）。
   # user_data 只在第一次開機執行，改了也不會套用到既有機器，反而會觸發 stop/start，所以一併忽略。
+  # key_name：現有機器建立時綁了舊的 SSH key pair（已移除，維運改走 Session Manager），
+  # key_name 無法就地修改，不忽略的話會重建機器、連帶丟掉 root volume 上的 Postgres 資料。
   lifecycle {
-    ignore_changes = [ami, user_data]
+    ignore_changes = [ami, user_data, key_name]
   }
 
   tags = {
