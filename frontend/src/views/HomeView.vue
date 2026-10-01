@@ -11,6 +11,8 @@ import MangaCard from '@/components/MangaCard.vue'
 import AddMangaModal from '@/components/AddMangaModal.vue'
 import AppToast from '@/components/AppToast.vue'
 import AiAssistant from '@/components/AiAssistant.vue'
+import SyncModal from '@/components/SyncModal.vue'
+import type { SyncApplyResult } from '@/api/sync'
 import { STATUS_OPTIONS, CATEGORY_OPTIONS } from '@/constants/manga'
 
 const PAGE_SIZE = 20
@@ -21,6 +23,8 @@ const store = useCollectionStore()
 const { lastError } = storeToRefs(store)
 
 const addModalOpen = ref(false)
+const syncModalOpen = ref(false)
+const syncMessage = ref<string | null>(null)
 
 type StatusFilter = 'all' | ReadingStatus
 type CategoryFilter = 'all' | MangaCategory
@@ -199,6 +203,12 @@ function onAdded() {
   resetAndReload()
 }
 
+function onSynced(result: SyncApplyResult) {
+  syncModalOpen.value = false
+  syncMessage.value = `同步完成：更新 ${result.updated} 部`
+  resetAndReload()
+}
+
 function logout() {
   auth.logout()
   router.replace({ name: 'login' })
@@ -216,6 +226,13 @@ function logout() {
         </p>
       </div>
       <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50"
+          @click="syncModalOpen = true"
+        >
+          ⟳ 一鍵更新
+        </button>
         <button
           type="button"
           class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50"
@@ -398,7 +415,9 @@ function logout() {
     </template>
 
     <AddMangaModal :open="addModalOpen" @close="addModalOpen = false" @added="onAdded" />
+    <SyncModal :open="syncModalOpen" @close="syncModalOpen = false" @synced="onSynced" />
 
     <AppToast :message="lastError" variant="error" @dismiss="store.clearError()" />
+    <AppToast :message="syncMessage" variant="info" @dismiss="syncMessage = null" />
   </main>
 </template>

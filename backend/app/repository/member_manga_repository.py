@@ -169,6 +169,16 @@ def stats_for_assistant(
     return [(value, count, float(avg) if avg is not None else None) for value, count, avg in db.execute(stmt).all()]
 
 
+def list_all_with_manga(db: Session, member_id: int) -> list[tuple[MemberManga, Manga]]:
+    stmt = (
+        select(MemberManga, Manga)
+        .join(Manga, MemberManga.manga_id == Manga.id)
+        .where(MemberManga.member_id == member_id)
+        .order_by(Manga.title)
+    )
+    return list(db.execute(stmt).all())
+
+
 def get_with_manga(db: Session, entry_id: int) -> tuple[MemberManga, Manga] | None:
     stmt = (
         select(MemberManga, Manga)

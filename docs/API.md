@@ -16,6 +16,7 @@ REST API 規格。詳細資料模型定義見 `DATA_MODEL.md`。
 - §9–§12：`/collections` 系列 endpoint
 - §13–§14：`GET /manga`、`PATCH /manga/{id}`（admin only）
 - §15：`POST /assistant/query`
+- §15.1：`POST /collections/sync/preview`、`POST /collections/sync/apply`（一鍵更新閱讀進度）
 - §16：驗證規則總表
 - §17：錯誤碼總表
 
@@ -186,6 +187,8 @@ JWT 由 `POST /auth/login` 簽發，payload 帶 `sub`（`member.id`）。
 | `PATCH` | `/collections/{id}` | 更新收藏（狀態/進度/評分） | ✅ | `200 OK` + `CollectionItem` |
 | `DELETE` | `/collections/{id}` | 移除收藏 | ✅ | `204 No Content` |
 | `POST` | `/assistant/query` | 自然語言查詢自己的收藏 | ✅ | `200 OK` + §3.8 |
+| `POST` | `/collections/sync/preview` | 解析貼上的閱讀紀錄並比對收藏，回傳確認清單（不寫入） | ✅ | `200 OK` + §15.1 |
+| `POST` | `/collections/sync/apply` | 寫入使用者確認過的進度 | ✅ | `200 OK` + §15.1 |
 
 ---
 
@@ -513,6 +516,73 @@ Authorization: Bearer <jwt>
 
 ---
 
+## 15.1 一鍵更新閱讀進度：`POST /collections/sync/preview` / `POST /collections/sync/apply`
+
+使用者貼上漫畫網站的閱讀紀錄（目前是看漫畫 localStorage 的 `viewed`），先預覽確認清單，確認後再寫入。
+
+### `POST /collections/sync/preview`
+
+```json
+{ "raw": "<貼上的閱讀紀錄，1–50000 字元>" }
+```
+
+**不寫入任何資料**。後端內部分三段，各自獨立：
+
+1. **解析**（`sync_service.parse`，不碰資料庫）：請 Claude Haiku 把內容抽成固定格式（書名、話數、卷數、是否番外），格式不限定特定網站。以下紀錄直接丟掉：
+   - 番外、特別篇等非正篇章節
+   - 話數或卷數不是整數（例如 `10.2`）
+   - 話數或卷數是 1
+   - 沒有話數也沒有卷數
+
+   同一部漫畫只留進度最新的一筆。
+2. **取得收藏**：一次 SELECT 出自己全部的收藏。
+3. **比對**（`sync_service.match`，純邏輯）：用正規化書名比對自己的收藏（簡繁體都能對上），只處理比對得到的漫畫
+   - 比對不到（不在收藏中，或譯名不同） → 不列出
+   - 狀態是已追完或棄坑 → 不列出
+   - 任何一項進度比收藏落後，或完全沒有前進 → 不列出
+   - 其餘 → `matched`，確認頁預設全部勾選
+
+```ts
+{
+  matched: {            // 收藏中、進度有前進
+    collectionId: number
+    title: string
+    status: ReadingStatus
+    sourceTitle: string
+    sourceText: string  // 原始章節文字，例如「第107话」
+    currentVolume: number | null
+    currentChapter: number | null
+    newVolume: number | null   // 只有前進的欄位才有值
+    newChapter: number | null
+  }[]
+}
+```
+
+### `POST /collections/sync/apply`
+
+```ts
+{
+  updates: { collectionId: number; newVolume: number | null; newChapter: number | null }[]  // 確認頁勾選的項目，1–200 筆
+}
+```
+
+- 全部在同一個交易內寫入
+- 寫入時再檢查一次只往前更新；`待看` 的收藏會改成 `追讀中`，並更新 `lastReadAt`
+- `collectionId` 不是自己的收藏 → `404 NOT_FOUND`
+
+回傳 `{ updated: number }`。
+
+### 錯誤
+
+| Status | code | 情境 |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | `raw` 空白或超過 50000 字元、`updates` 為空或超過 200 筆 |
+| 401 | `UNAUTHORIZED` | 未帶/無效 token |
+| 404 | `NOT_FOUND` | `collectionId` 不存在或不屬於自己 |
+| 502 | `ASSISTANT_UNAVAILABLE` | AI 解析失敗（未設定/逾時/回應無法解析） |
+
+---
+
 ## 16. 驗證規則總表
 
 | 欄位 | 規則 |
@@ -527,6 +597,7 @@ Authorization: Bearer <jwt>
 | `page` | 整數，≥ 1，未帶預設 1 |
 | `pageSize` | 整數，1–100，未帶預設 20 |
 | `question` | trim 後 1–500 字元 |
+| `raw`（一鍵更新） | 1–50000 字元 |
 
 ---
 

@@ -10,6 +10,7 @@ from app.api.assistant import router as assistant_router
 from app.api.auth import router as auth_router
 from app.api.collections import router as collections_router
 from app.api.manga import router as manga_router
+from app.api.sync import router as sync_router
 from app.core.database import get_db
 from app.core.errors import AppError
 
@@ -24,6 +25,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(manga_router)
+app.include_router(sync_router)
 app.include_router(collections_router)
 app.include_router(assistant_router)
 
