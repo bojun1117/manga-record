@@ -229,13 +229,6 @@ function logout() {
         <button
           type="button"
           class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50"
-          @click="syncModalOpen = true"
-        >
-          ⟳ 一鍵更新
-        </button>
-        <button
-          type="button"
-          class="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50"
           @click="addModalOpen = true"
         >
           ＋ 新增漫畫
@@ -314,6 +307,13 @@ function logout() {
         @click="activeCategory = f.value"
       >
         {{ f.label }}
+      </button>
+      <button
+        type="button"
+        class="ml-auto rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-[13px] font-medium text-neutral-700 transition hover:bg-neutral-50"
+        @click="syncModalOpen = true"
+      >
+        ⟳ 一鍵更新
       </button>
     </div>
 
