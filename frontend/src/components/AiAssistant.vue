@@ -97,7 +97,7 @@ function onCardChanged() {
         <div
           v-if="items.length > 0"
           class="mt-3 grid gap-3"
-          style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))"
+          style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr))"
         >
           <MangaCard v-for="item in items" :key="item.id" :item="item" @changed="onCardChanged" />
         </div>

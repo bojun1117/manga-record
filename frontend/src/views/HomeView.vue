@@ -320,7 +320,7 @@ function logout() {
     <div
       v-if="mainLoading && !mainLoaded"
       class="grid gap-3"
-      style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))"
+      style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr))"
     >
       <div
         v-for="i in 6"
@@ -333,7 +333,7 @@ function logout() {
       <div
         v-if="mainItems.length > 0"
         class="grid gap-3"
-        style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))"
+        style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr))"
       >
         <MangaCard v-for="item in mainItems" :key="item.id" :item="item" @changed="onCardChanged" />
       </div>
@@ -380,7 +380,7 @@ function logout() {
         <div
           v-if="planItems.length > 0"
           class="grid gap-3"
-          style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))"
+          style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr))"
         >
           <MangaCard v-for="item in planItems" :key="item.id" :item="item" @changed="onCardChanged" />
         </div>
