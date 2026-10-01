@@ -13,3 +13,7 @@ output "public_ip" {
 output "public_dns" {
   value = aws_instance.backend.public_dns
 }
+
+output "db_backup_bucket" {
+  value = aws_s3_bucket.db_backups.bucket
+}

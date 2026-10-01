@@ -53,3 +53,8 @@ variable "anthropic_secret_id" {
 variable "anthropic_secret_arn" {
   type = string
 }
+
+variable "db_backup_retention_days" {
+  type    = number
+  default = 14
+}

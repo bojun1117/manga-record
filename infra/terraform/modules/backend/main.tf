@@ -40,6 +40,69 @@ resource "aws_iam_role_policy" "ec2_secrets_read" {
   policy = data.aws_iam_policy_document.ec2_secrets_read.json
 }
 
+data "aws_caller_identity" "current" {}
+
+# 資料庫每日備份（EC2 上的 cron 跑 pg_dump 上傳到這裡），超過 14 天自動刪除
+resource "aws_s3_bucket" "db_backups" {
+  bucket = "${var.project_name}-${var.environment}-db-backups-${data.aws_caller_identity.current.account_id}"
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-db-backups"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "db_backups" {
+  bucket = aws_s3_bucket.db_backups.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "db_backups" {
+  bucket = aws_s3_bucket.db_backups.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "db_backups" {
+  bucket = aws_s3_bucket.db_backups.id
+
+  rule {
+    id     = "expire-old-backups"
+    status = "Enabled"
+
+    filter {}
+
+    expiration {
+      days = var.db_backup_retention_days
+    }
+  }
+}
+
+data "aws_iam_policy_document" "ec2_db_backups" {
+  statement {
+    actions   = ["s3:PutObject", "s3:GetObject"]
+    resources = ["${aws_s3_bucket.db_backups.arn}/*"]
+  }
+
+  statement {
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.db_backups.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "ec2_db_backups" {
+  name   = "${var.project_name}-${var.environment}-ec2-db-backups"
+  role   = aws_iam_role.ec2.id
+  policy = data.aws_iam_policy_document.ec2_db_backups.json
+}
+
 resource "aws_iam_instance_profile" "ec2" {
   name = "${var.project_name}-${var.environment}-ec2-profile"
   role = aws_iam_role.ec2.name
@@ -80,11 +143,22 @@ resource "aws_instance" "backend" {
     jwt_secret_id       = var.jwt_secret_id
     anthropic_secret_id = var.anthropic_secret_id
     app_port            = var.app_port
+    backup_bucket       = aws_s3_bucket.db_backups.bucket
+    setup_host_sh       = filebase64("${path.root}/../ec2/setup-host.sh")
+    deploy_sh           = filebase64("${path.root}/../ec2/deploy.sh")
+    backup_sh           = filebase64("${path.root}/../ec2/backup.sh")
+    compose_yml         = filebase64("${path.root}/../ec2/compose.yml")
   })
 
   root_block_device {
     volume_size = 20
     volume_type = "gp3"
+  }
+
+  # al2023 data source 每次都抓最新 AMI；AWS 發新版時不要因此重建機器（會中斷服務）。
+  # user_data 只在第一次開機執行，改了也不會套用到既有機器，反而會觸發 stop/start，所以一併忽略。
+  lifecycle {
+    ignore_changes = [ami, user_data]
   }
 
   tags = {

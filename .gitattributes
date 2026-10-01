@@ -1,0 +1,4 @@
+# 會被送到 Linux（EC2 / user_data）執行的檔案一律用 LF，避免 Windows 的 core.autocrlf 轉成 CRLF 讓 bash 壞掉
+*.sh text eol=lf
+*.tpl text eol=lf
+infra/ec2/** text eol=lf

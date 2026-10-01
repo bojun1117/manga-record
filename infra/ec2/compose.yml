@@ -1,0 +1,43 @@
+# EC2 上的容器組合：Postgres + 後端。
+# 由 /opt/manga-record/deploy.sh 讀取，密碼等設定放在同目錄的 .env（deploy.sh 從 Secrets Manager 產生，權限 600）。
+name: manga-record
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: manga-record-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    # t3.micro 只有 1GB 記憶體，調小設定
+    command: >-
+      postgres
+      -c shared_buffers=64MB
+      -c effective_cache_size=192MB
+      -c work_mem=2MB
+      -c maintenance_work_mem=32MB
+      -c max_connections=20
+    volumes:
+      - /var/lib/manga-record/pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    image: ${ECR_REPO}:latest
+    container_name: manga-record-backend
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT}:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://${DB_USER}:${DB_PASS}@postgres:5432/${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ENVIRONMENT: prod
+    depends_on:
+      postgres:
+        condition: service_healthy
