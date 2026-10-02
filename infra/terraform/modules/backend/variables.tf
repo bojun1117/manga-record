@@ -58,3 +58,20 @@ variable "db_backup_retention_days" {
   type    = number
   default = 14
 }
+
+variable "ec2_schedule_timezone" {
+  type    = string
+  default = "Asia/Taipei"
+}
+
+variable "ec2_stop_schedule" {
+  description = "每天關機時間（EventBridge Scheduler cron，時區見 ec2_schedule_timezone）"
+  type        = string
+  default     = "cron(0 2 * * ? *)"
+}
+
+variable "ec2_start_schedule" {
+  description = "每天開機時間（EventBridge Scheduler cron，時區見 ec2_schedule_timezone）"
+  type        = string
+  default     = "cron(0 16 * * ? *)"
+}

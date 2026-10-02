@@ -170,3 +170,64 @@ resource "aws_eip" "backend" {
     Name = "${var.project_name}-${var.environment}-backend-eip"
   }
 }
+
+# 夜間關機省錢：每天台灣時間 02:00 關機、16:00 開機（備份在關機前的 01:00，見 infra/ec2/setup-host.sh）
+data "aws_iam_policy_document" "scheduler_assume_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["scheduler.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "scheduler" {
+  name               = "${var.project_name}-${var.environment}-ec2-scheduler"
+  assume_role_policy = data.aws_iam_policy_document.scheduler_assume_role.json
+}
+
+data "aws_iam_policy_document" "scheduler_start_stop" {
+  statement {
+    actions   = ["ec2:StartInstances", "ec2:StopInstances"]
+    resources = [aws_instance.backend.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "scheduler_start_stop" {
+  name   = "${var.project_name}-${var.environment}-ec2-start-stop"
+  role   = aws_iam_role.scheduler.id
+  policy = data.aws_iam_policy_document.scheduler_start_stop.json
+}
+
+resource "aws_scheduler_schedule" "ec2_stop" {
+  name                         = "${var.project_name}-${var.environment}-ec2-stop"
+  schedule_expression          = var.ec2_stop_schedule
+  schedule_expression_timezone = var.ec2_schedule_timezone
+
+  flexible_time_window {
+    mode = "OFF"
+  }
+
+  target {
+    arn      = "arn:aws:scheduler:::aws-sdk:ec2:stopInstances"
+    role_arn = aws_iam_role.scheduler.arn
+    input    = jsonencode({ InstanceIds = [aws_instance.backend.id] })
+  }
+}
+
+resource "aws_scheduler_schedule" "ec2_start" {
+  name                         = "${var.project_name}-${var.environment}-ec2-start"
+  schedule_expression          = var.ec2_start_schedule
+  schedule_expression_timezone = var.ec2_schedule_timezone
+
+  flexible_time_window {
+    mode = "OFF"
+  }
+
+  target {
+    arn      = "arn:aws:scheduler:::aws-sdk:ec2:startInstances"
+    role_arn = aws_iam_role.scheduler.arn
+    input    = jsonencode({ InstanceIds = [aws_instance.backend.id] })
+  }
+}

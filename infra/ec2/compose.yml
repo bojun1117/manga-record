@@ -7,6 +7,8 @@ services:
     image: postgres:16
     container_name: manga-record-postgres
     restart: unless-stopped
+    # EC2 每天排程關機，給 Postgres 足夠時間正常關閉（預設只等 10 秒）
+    stop_grace_period: 30s
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}

@@ -5,7 +5,8 @@
 ## 架構重點
 
 - **後端和 Postgres 都跑在同一台 EC2 上**，用 docker compose 管理（`infra/ec2/compose.yml`）。Postgres 不對外開 port，只有同一個 Docker 網路裡的後端連得到
-- **每天 UTC 19:00（台灣凌晨 3 點）備份**：cron 跑 `pg_dump` 上傳到 S3，S3 保留 14 天
+- **每天台灣凌晨 1 點備份**：cron 跑 `pg_dump` 上傳到 S3，S3 保留 14 天
+- **夜間關機省錢**：EventBridge Scheduler 每天台灣 02:00 關機、16:00 開機（`modules/backend` 的 `ec2_stop_schedule` / `ec2_start_schedule`）。關機期間網站無法使用，GitHub Actions 的部署也會失敗，開機後重跑即可。開機後 Docker 與兩個容器會自動啟動
 - **EC2 維運走 AWS Session Manager**，不開 22 port
 - DB 密碼、JWT secret、Anthropic API key 都存 **Secrets Manager**，EC2 用 IAM instance profile 讀取
 
@@ -17,7 +18,7 @@ Root module（`main.tf`）只負責接線，實際資源分在 7 個 child modul
 - `modules/database`：只有資料庫密碼（`random_password`）。**這個資源若被重建會產生新密碼，但既有的 Postgres 不會跟著改，後端會連不上**——不要搬動或改它的參數
 - `modules/secrets`：Secrets Manager（DB 帳號密碼、JWT secret、Anthropic API key）
 - `modules/ecr`：後端 Docker image 的 ECR repo
-- `modules/backend`：EC2 的 IAM role + 一台 EC2（Amazon Linux 2023）+ Elastic IP + 資料庫備份的 S3 bucket。開機時透過 `modules/backend/templates/user_data.sh.tpl` 裝好 docker/aws-cli/jq，把 `infra/ec2/` 的檔案寫到 `/opt/manga-record/`，再跑 `setup-host.sh` 和 `deploy.sh`
+- `modules/backend`：EC2 的 IAM role + 一台 EC2（Amazon Linux 2023）+ Elastic IP + 資料庫備份的 S3 bucket + 開關機排程。開機時透過 `modules/backend/templates/user_data.sh.tpl` 裝好 docker/aws-cli/jq，把 `infra/ec2/` 的檔案寫到 `/opt/manga-record/`，再跑 `setup-host.sh` 和 `deploy.sh`
 - `modules/cicd`：GitHub Actions 用的 OIDC provider + IAM role，權限鎖在「push 到 ECR」+「對 EC2 送 SSM SendCommand」
 - `modules/cdn`：CloudFront，把 EC2 的裸 HTTP 包成 HTTPS
 

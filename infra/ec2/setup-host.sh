@@ -28,9 +28,9 @@ fi
 
 mkdir -p /opt/manga-record /var/lib/manga-record/pgdata
 
-# 每天 UTC 19:00（台灣凌晨 3 點）備份
+# 每天 UTC 17:00（台灣凌晨 1 點）備份；EC2 每天台灣 02:00–16:00 關機，備份要在關機前跑
 cat > /etc/cron.d/manga-record-backup <<'CRON'
-0 19 * * * root /opt/manga-record/backup.sh >> /var/log/manga-record-backup.log 2>&1
+0 17 * * * root /opt/manga-record/backup.sh >> /var/log/manga-record-backup.log 2>&1
 CRON
 chmod 644 /etc/cron.d/manga-record-backup
 
