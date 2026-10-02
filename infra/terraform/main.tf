@@ -1,27 +1,17 @@
 module "network" {
   source = "./modules/network"
 
-  project_name         = var.project_name
-  environment          = var.environment
-  vpc_cidr             = var.vpc_cidr
-  public_subnet_cidrs  = var.public_subnet_cidrs
-  private_subnet_cidrs = var.private_subnet_cidrs
-  availability_zones   = var.availability_zones
-  app_port             = var.app_port
-  my_ip_cidr           = var.my_ip_cidr
+  project_name        = var.project_name
+  environment         = var.environment
+  vpc_cidr            = var.vpc_cidr
+  public_subnet_cidrs = var.public_subnet_cidrs
+  availability_zones  = var.availability_zones
+  app_port            = var.app_port
 }
 
+# 只產生資料庫密碼；資料庫本身是 EC2 上的 Postgres 容器（infra/ec2/compose.yml）
 module "database" {
   source = "./modules/database"
-
-  project_name          = var.project_name
-  environment           = var.environment
-  db_name               = var.db_name
-  db_master_username    = var.db_master_username
-  db_instance_class     = var.db_instance_class
-  db_engine_version     = var.db_engine_version
-  private_subnet_ids    = module.network.private_subnet_ids
-  rds_security_group_id = module.network.rds_security_group_id
 }
 
 module "secrets" {
@@ -31,8 +21,6 @@ module "secrets" {
   environment        = var.environment
   db_master_username = var.db_master_username
   db_name            = var.db_name
-  db_host            = module.database.address
-  db_port            = module.database.port
   db_master_password = module.database.master_password
   anthropic_api_key  = var.anthropic_api_key
 }

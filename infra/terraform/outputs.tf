@@ -6,19 +6,6 @@ output "public_subnet_ids" {
   value = module.network.public_subnet_ids
 }
 
-output "private_subnet_ids" {
-  value = module.network.private_subnet_ids
-}
-
-output "db_endpoint" {
-  description = "RDS 連線位址（不含 port）"
-  value       = module.database.address
-}
-
-output "db_port" {
-  value = module.database.port
-}
-
 output "db_secret_arn" {
   description = "Secrets Manager 裡 DB 連線資訊的 ARN"
   value       = module.secrets.db_secret_arn
@@ -28,9 +15,9 @@ output "jwt_secret_arn" {
   value = module.secrets.jwt_secret_arn
 }
 
-output "psql_connect_hint" {
-  description = "驗收用：本機測試連線指令（密碼另外用 aws secretsmanager get-secret-value 拿）。RDS 預設不對外開放，這組指令只有在 my_ip_cidr 有臨時填值時才連得上"
-  value       = "psql \"host=${module.database.address} port=${module.database.port} dbname=${var.db_name} user=${var.db_master_username} sslmode=require\""
+output "db_connect_hint" {
+  description = "連進 EC2 上的 Postgres：先用 Session Manager 開 shell，再執行這行（容器內走 socket，不需要密碼）"
+  value       = "aws ssm start-session --target ${module.backend.instance_id}  →  sudo docker exec -it manga-record-postgres psql -U ${var.db_master_username} -d ${var.db_name}"
 }
 
 output "ecr_repository_url" {

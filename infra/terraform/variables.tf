@@ -34,14 +34,8 @@ variable "public_subnet_cidrs" {
   default     = ["10.20.1.0/24", "10.20.2.0/24"]
 }
 
-variable "private_subnet_cidrs" {
-  description = "Private subnet CIDR，放 RDS，關閉對外連線"
-  type        = list(string)
-  default     = ["10.20.11.0/24", "10.20.12.0/24"]
-}
-
 variable "availability_zones" {
-  description = "使用的 AZ；RDS DB subnet group 至少要橫跨 2 個 AZ 才能建立（即使 instance 本身是單 AZ）"
+  description = "public subnet 使用的 AZ"
   type        = list(string)
   default     = ["us-east-1a", "us-east-1b"]
 }
@@ -53,34 +47,9 @@ variable "db_name" {
 }
 
 variable "db_master_username" {
-  description = "RDS master 帳號（應用程式本身之後會用另一組權限較小的帳號，這組只給 migration/管理用）"
+  description = "Postgres 帳號（EC2 上的 Postgres 容器與後端共用）"
   type        = string
   default     = "manga_record_admin"
-}
-
-variable "db_instance_class" {
-  description = "RDS instance class，個人專案用最小規格"
-  type        = string
-  default     = "db.t4g.micro"
-}
-
-variable "db_engine_version" {
-  description = "PostgreSQL 版本；apply 前建議用 `aws rds describe-db-engine-versions --engine postgres --region <region>` 確認這個版本在你的 region 還可用"
-  type        = string
-  default     = "16.4"
-}
-
-variable "my_ip_cidr" {
-  description = <<-EOT
-    你本機的公網 IP（CIDR 格式，例如 "1.2.3.4/32"），用來臨時允許本機直連 RDS 除錯。
-    查詢方式：終端機跑 `curl -s https://checkip.amazonaws.com`，拿到的 IP 後面加上 /32。
-
-    Phase 6 起預設留空（null）——RDS 平常只信任 EC2 的 security group，不對外開放。
-    只有真的需要用 psql 直連除錯時才臨時填這個值、apply，用完再清空、apply 關掉
-    （見 security_group.tf 的 aws_security_group_rule.rds_debug）。
-  EOT
-  type        = string
-  default     = null
 }
 
 variable "ec2_instance_type" {

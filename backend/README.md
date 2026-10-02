@@ -1,6 +1,6 @@
 # Backend
 
-FastAPI + SQLAlchemy + Alembic + PostgreSQL（RDS）。
+FastAPI + SQLAlchemy + Alembic + PostgreSQL（正式環境是 EC2 上的 Docker 容器，見 infra/terraform/README.md）。
 
 ## 架構
 
