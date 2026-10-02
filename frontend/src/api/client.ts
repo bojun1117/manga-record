@@ -30,6 +30,8 @@ export class ApiException extends Error {
   }
 }
 
+const SERVER_UNREACHABLE_MESSAGE = '伺服器暫時無法連線，請稍後再試。'
+
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   body?: unknown
@@ -53,7 +55,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
   } catch (err) {
-    throw new ApiException(0, null, `Network error: ${(err as Error).message}`)
+    console.error('network error', err)
+    throw new ApiException(0, null, SERVER_UNREACHABLE_MESSAGE)
   }
 
   if (response.status === 204) {
@@ -65,7 +68,13 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     data = await response.json()
   } catch {
     if (!response.ok) {
-      throw new ApiException(response.status, null, `HTTP ${response.status}`)
+      // 502/503/504 且不是 JSON：CloudFront 連不到後端（例如機器關機或還在開機）
+      const gatewayError = [502, 503, 504].includes(response.status)
+      throw new ApiException(
+        response.status,
+        null,
+        gatewayError ? SERVER_UNREACHABLE_MESSAGE : `HTTP ${response.status}`,
+      )
     }
     data = null
   }
