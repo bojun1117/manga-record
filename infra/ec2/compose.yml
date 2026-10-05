@@ -43,3 +43,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # deploy.sh 用 --wait 等這個檢查通過才算換版成功；image 裡沒有 curl，用 Python 打
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/db', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 6
+      start_period: 15s

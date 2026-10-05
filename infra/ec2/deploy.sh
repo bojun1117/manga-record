@@ -42,7 +42,12 @@ echo "running migration..."
 docker compose run --rm --no-deps backend alembic upgrade head
 
 echo "starting backend..."
-docker compose up -d --no-deps backend
+# 等後端的 healthcheck 通過；起不來就讓換版失敗，GitHub Actions 才會顯示紅叉
+if ! docker compose up -d --no-deps --wait --wait-timeout 60 backend; then
+  echo "backend did not become healthy, recent logs:"
+  docker compose logs --tail 50 backend
+  exit 1
+fi
 docker image prune -f >/dev/null
 
 echo "deploy done"
