@@ -22,7 +22,7 @@ Root module（`main.tf`）只負責接線，實際資源分在 7 個 child modul
 - `modules/cicd`：GitHub Actions 用的 OIDC provider + IAM role，權限鎖在「push 到 ECR」+「對 EC2 送 SSM SendCommand」
 - `modules/cdn`：CloudFront，把 EC2 的裸 HTTP 包成 HTTPS
 
-EC2 忽略 `ami` 和 `user_data` 的變更：`user_data` 只在第一次開機執行，改了不會套用到既有機器；不忽略的話，AWS 發新 AMI 或改模板都會讓 Terraform 重建或重開 EC2。**改了 `infra/ec2/` 的檔案，要另外手動同步到既有機器上。**
+EC2 忽略 `ami` 和 `user_data` 的變更：`user_data` 只在第一次開機執行，改了不會套用到既有機器；不忽略的話，AWS 發新 AMI 或改模板都會讓 Terraform 重建或重開 EC2。既有機器上的 `infra/ec2/` 檔案改由後端的部署 workflow（`.github/workflows/deploy-backend.yml`）同步：每次部署都會先把這四個檔案寫到 `/opt/manga-record/` 再跑 `deploy.sh`，改了這些檔案 push 到 main 就會生效。**例外是 `setup-host.sh`：只會被同步、不會被執行**，改了它要用 Session Manager 連進去手動跑一次。
 
 ## EC2 上的檔案（`/opt/manga-record/`）
 

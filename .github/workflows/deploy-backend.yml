@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'backend/**'
+      - 'infra/ec2/**'
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
 
@@ -80,17 +81,30 @@ jobs:
           docker build -t "$ECR_REPO:latest" .
           docker push "$ECR_REPO:latest"
 
-      - name: Trigger deploy on EC2 via SSM
+      - name: Sync infra/ec2 files and deploy on EC2 via SSM
         env:
           INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
         run: |
           set -euo pipefail
 
+          # 先把 repo 的 infra/ec2/ 檔案寫到機器上（base64 傳入，避免跳脫問題），再執行 deploy.sh。
+          # 先寫成 .new 再 mv，避免覆寫到正在執行中的腳本。
+          SCRIPT="set -eu"$'\n'
+          for f in compose.yml deploy.sh backup.sh setup-host.sh; do
+            mode=644
+            if [[ "$f" == *.sh ]]; then mode=755; fi
+            SCRIPT+="echo $(base64 -w0 "infra/ec2/$f") | base64 -d > /opt/manga-record/$f.new"$'\n'
+            SCRIPT+="chmod $mode /opt/manga-record/$f.new"$'\n'
+            SCRIPT+="mv /opt/manga-record/$f.new /opt/manga-record/$f"$'\n'
+          done
+          SCRIPT+="/opt/manga-record/deploy.sh"
+          PARAMS=$(jq -n --arg script "$SCRIPT" '{commands: ($script | split("\n"))}')
+
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
             --comment "GitHub Actions deploy ${{ github.sha }}" \
-            --parameters 'commands=["sudo /opt/manga-record/deploy.sh"]' \
+            --parameters "$PARAMS" \
             --query "Command.CommandId" --output text)
           echo "SSM command id: $COMMAND_ID"
 
